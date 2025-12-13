@@ -2,7 +2,6 @@ from psycopg2.extras import RealDictCursor
 from .connection import get_conn
 
 
-
 def fetch_one(sql: str, params=()):
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
