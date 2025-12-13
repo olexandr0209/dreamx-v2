@@ -8,7 +8,11 @@ import os
 router = Router()
 
 API_BASE = os.getenv("API_BASE_URL", "https://dreamx-v2.onrender.com")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://dreamx-v2.onrender.com")  # поставиш реальний URL WebApp (static)
+WEBAPP_URL = os.getenv(
+    "WEBAPP_URL",
+    "https://dreamx-v2-webapp.onrender.com"
+)
+
 
 @router.message(Command("start"))
 async def start_handler(message: Message):
