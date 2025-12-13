@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
-from .db.storage import list_tournaments, get_tournament, create_tournament
+from app.db.db import fetch_one, fetch_all, execute, execute_returning_one
+
 
 bp_tournaments = Blueprint("tournaments", __name__, url_prefix="/tournaments")
 
