@@ -1,1 +1,62 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX</title>
+
+  <link rel="stylesheet" href="../src/css/tokens.css" />
+  <link rel="stylesheet" href="../src/css/layout.css" />
+  <link rel="stylesheet" href="../src/css/home.css" />
+</head>
+
+<body class="dx theme-light">
+  <div class="dx-app">
+
+    <!-- TOP BAR -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <div class="dx-brand">
+          <div class="dx-brand__logo">DX</div>
+          <div class="dx-brand__text">
+            <div class="dx-brand__title">DreamX</div>
+            <div class="dx-brand__subtitle">v2</div>
+          </div>
+        </div>
+
+        <div class="dx-topbar__right">
+          <div class="dx-chip">Light</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT (scroll inside) -->
+    <main class="dx-content">
+      <section class="home-hero">
+        <h1 class="home-title">Головний екран</h1>
+        <p class="home-subtitle">Почни з короткої гри проти бота.</p>
+
+        <button id="btn-play-bot" class="dx-btn dx-btn--primary">
+          Грати проти бота
+        </button>
+
+        <div class="home-hint">
+          Працює на iPhone 8–17: safe-area, фіксовані бари, внутрішній скрол.
+        </div>
+      </section>
+    </main>
+
+    <!-- BOTTOM BAR (поки не чіпаємо, але додаємо напис як у Figma) -->
+    <footer class="dx-bottombar">
+      <div class="dx-bottombar__inner">
+        <div class="dx-bottombar__label">Навігація</div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="../src/js/dreamx_core.js"></script>
+  <script src="../src/js/home_screen.js"></script>
+</body>
+</html>
 
