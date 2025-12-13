@@ -7,7 +7,7 @@ router = Router()
 
 API_BASE = os.getenv("API_BASE_URL", "https://dreamx-v2.onrender.com")
 
-@router.message(commands=["start"])
+@router.message(Command("start"))
 async def start_handler(message: Message):
     user = message.from_user
 
