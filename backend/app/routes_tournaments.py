@@ -1,59 +1,29 @@
 from flask import Blueprint, jsonify, request
 
+from .db.storage import list_tournaments, get_tournament, create_tournament
+
 bp_tournaments = Blueprint("tournaments", __name__, url_prefix="/tournaments")
 
 
 @bp_tournaments.get("")
-def list_tournaments():
-    """
-    Заглушка списку турнірів
-    """
-    return jsonify({
-        "ok": True,
-        "tournaments": [
-            {
-                "id": 1,
-                "title": "BestGamers",
-                "organizer": "@GamerBest",
-                "status": "waiting",
-                "players_count": 12,
-                "starts_at": "2025-12-20T16:00:00Z"
-            }
-        ]
-    })
+def tournaments_list():
+    items = list_tournaments()
+    return jsonify({"ok": True, "items": items})
 
 
 @bp_tournaments.get("/<int:tournament_id>")
-def get_tournament(tournament_id):
-    """
-    Заглушка одного турніру
-    """
-    return jsonify({
-        "ok": True,
-        "tournament": {
-            "id": tournament_id,
-            "title": "BestGamers",
-            "organizer": "@GamerBest",
-            "status": "waiting",
-            "players_count": 12,
-            "max_players": 50
-        }
-    })
+def tournaments_get(tournament_id: int):
+    t = get_tournament(tournament_id)
+    if not t:
+        return jsonify({"ok": False, "error": "tournament not found"}), 404
+    return jsonify({"ok": True, "item": t})
 
 
 @bp_tournaments.post("")
-def create_tournament():
-    """
-    Заглушка створення турніру
-    """
-    data = request.json or {}
-
-    return jsonify({
-        "ok": True,
-        "tournament": {
-            "id": 99,
-            "title": data.get("title", "New Tournament"),
-            "max_players": data.get("max_players", 50),
-            "chat_enabled": data.get("chat_enabled", False)
-        }
-    }), 201
+def tournaments_create():
+    payload = request.get_json(silent=True) or {}
+    try:
+        t = create_tournament(payload)
+        return jsonify({"ok": True, "item": t}), 201
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
