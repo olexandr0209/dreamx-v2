@@ -68,3 +68,131 @@ CREATE TABLE IF NOT EXISTS players (
 
 CREATE INDEX IF NOT EXISTS idx_players_telegram_id ON players(telegram_id);
 
+
+
+# DreamX v2.0 — DB_SCHEMA (MVP)
+
+Цей документ — єдине джерело правди про структуру БД.
+Будь-які зміни робимо тільки через SQL-міграції (нові файли 00X_*.sql).
+
+---
+
+## Загальні принципи
+- Primary keys: BIGSERIAL/BIGINT
+- Час: created_at, updated_at (де потрібно)
+- Унікальні обмеження: telegram_id, tournament_players (tournament_id + user_id)
+- Міграції відстежуються в schema_migrations
+
+---
+
+## Таблиця: schema_migrations
+Використовується migrate.py для того, щоб не запускати міграції повторно.
+
+### Поля
+- version TEXT PRIMARY KEY — назва файлу міграції (наприклад: "001_init.sql")
+- applied_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+---
+
+## Таблиця: users
+Користувач Telegram, який відкрив WebApp або взаємодіяв з ботом.
+
+### Поля
+- id BIGSERIAL PRIMARY KEY
+- telegram_id BIGINT NOT NULL UNIQUE
+- username TEXT NULL
+- first_name TEXT NULL
+- last_name TEXT NULL
+- language_code TEXT NULL
+- created_at TIMESTAMP NOT NULL DEFAULT NOW()
+- updated_at TIMESTAMP NULL
+
+### Коментар
+- user створюється/оновлюється через API upsert.
+- telegram_id — головний ключ інтеграції з Telegram.
+
+---
+
+## Таблиця: tournaments
+Турніри DreamX (MVP: зберігаємо назву, час, опис, статус, організатора).
+
+### Поля
+- id BIGSERIAL PRIMARY KEY
+- title TEXT NOT NULL
+- description TEXT NULL
+- host_username TEXT NULL         — @Organizer (для показу в UI)
+- status TEXT NOT NULL DEFAULT 'upcoming'
+  Можливі значення MVP: 'upcoming' | 'live' | 'finished'
+- start_at TIMESTAMP NULL
+- end_at TIMESTAMP NULL
+- created_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+### Коментар
+- На MVP достатньо status + start_at.
+- Пізніше додамо: правила, тип турніру, призи, приватність, параметри груп.
+
+---
+
+## Таблиця: tournament_players
+Хто приєднався до конкретного турніру.
+
+### Поля
+- id BIGSERIAL PRIMARY KEY
+- tournament_id BIGINT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE
+- user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- joined_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+### Обмеження
+- UNIQUE (tournament_id, user_id)
+
+### Коментар
+- Забороняє подвійний join.
+- Це основа для "✅ Ви приєднались!" у фронті.
+
+---
+
+## Таблиця: games
+Записи матчів/боїв RPS (MVP: простий лог).
+
+### Поля
+- id BIGSERIAL PRIMARY KEY
+- tournament_id BIGINT NULL REFERENCES tournaments(id) ON DELETE SET NULL
+- user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE
+- opponent_user_id BIGINT NULL REFERENCES users(id) ON DELETE SET NULL
+- opponent_kind TEXT NOT NULL DEFAULT 'bot'
+  Можливі значення MVP: 'bot' | 'user'
+- round_no INT NULL                 — номер раунду (якщо є)
+- move_user TEXT NULL               — 'rock'|'paper'|'scissors'
+- move_opponent TEXT NULL           — 'rock'|'paper'|'scissors'
+- result TEXT NULL                  — 'win'|'lose'|'draw'
+- points_delta INT NOT NULL DEFAULT 0
+- created_at TIMESTAMP NOT NULL DEFAULT NOW()
+
+### Коментар
+- На MVP це просто лог, щоб потім будувати статистику.
+- Для PvP (user vs user) opponent_user_id буде заповнений і opponent_kind='user'.
+
+---
+
+## Зв’язки (коротко)
+- users 1—M tournament_players
+- tournaments 1—M tournament_players
+- users 1—M games
+- tournaments 1—M games
+
+---
+
+## MVP гарантії
+1) Користувач може бути створений через telegram_id
+2) Турнір можна показати списком
+3) Користувач може приєднатись (без дубляжу)
+4) Гра (RPS) може записуватись у games
+
+---
+
+## Плани на розширення (пізніше, не в MVP)
+- tournament_groups (групи гравців)
+- tournament_rounds (сітка/раунди)
+- user_wallet / points_balance
+- ads / promo / giveaways
+
