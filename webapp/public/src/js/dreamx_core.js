@@ -1,23 +1,14 @@
+// webapp/public/src/js/dreamx_core.js
 
-(function () {
-  // Theme prepared: light only for now
-  const root = document.body;
-  if (!root.classList.contains("theme-light") && !root.classList.contains("theme-dark")) {
-    root.classList.add("theme-light");
-  }
+window.DreamX = window.DreamX || {};
 
-  // Telegram WebApp integration (safe if opened in browser)
-  const tg = window.Telegram ? window.Telegram.WebApp : null;
-
-  window.DreamX = {
-    tg,
-    isTelegram: !!tg,
-    initData: tg ? tg.initData : "",
-    user: tg && tg.initDataUnsafe ? tg.initDataUnsafe.user : null,
-  };
-
-  if (tg) {
-    tg.ready();
-    tg.expand();
-  }
-})();
+window.DreamX.getTgUserId = function () {
+  try {
+    const tg = window.Telegram?.WebApp;
+    const id = tg?.initDataUnsafe?.user?.id;
+    if (id) return String(id);
+  } catch (e) {}
+  // fallback: query ?tg_user_id=...
+  const p = new URLSearchParams(window.location.search);
+  return p.get("tg_user_id");
+};
