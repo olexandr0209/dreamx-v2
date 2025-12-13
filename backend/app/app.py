@@ -5,8 +5,8 @@ from flask import Flask, jsonify
 from app.api.players import bp_players
 from app.api.games import bp_games
 #from app.api.users import bp_users   якщо є
-from app.api.health import bp_health  # якщо є
-from app.api.tournaments import bp_tournaments  # якщо є
+#from app.api.health import bp_health  # якщо є
+#from app.api.tournaments import bp_tournaments  # якщо є
 
 def create_app():
     app = Flask(__name__)
