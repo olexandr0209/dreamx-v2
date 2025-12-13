@@ -1,15 +1,32 @@
-from bots.common.api_client import upsert_user_on_start
+from aiogram import Router
+from aiogram.types import Message
+import requests
+import os
 
-async def start_handler(message):
-    data = upsert_user_on_start(message.from_user)
+router = Router()
 
-    if not data.get("ok"):
-        await message.answer(f"❌ Не вдалося створити профіль: {data.get('error')}")
+API_BASE = os.getenv("API_BASE_URL", "https://dreamx-v2.onrender.com")
+
+@router.message(commands=["start"])
+async def start_handler(message: Message):
+    user = message.from_user
+
+    payload = {
+        "tg_user_id": user.id,
+        "username": user.username,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "language_code": user.language_code,
+        "photo_url": None,
+    }
+
+    r = requests.post(f"{API_BASE}/players/upsert", json=payload, timeout=5)
+
+    if r.status_code != 200:
+        await message.answer("⚠️ Помилка створення профілю")
         return
 
-    user = data["user"]
     await message.answer(
-        f"👋 Вітаю, {user.get('first_name') or ''}!\n"
-        f"✅ Профіль створено.\n"
-        f"ID: {user['id']} | Points: {user['points']}"
+        "👋 Вітаю у DreamX\n\n"
+        "Твій профіль створено. Скоро почнемо гру."
     )
