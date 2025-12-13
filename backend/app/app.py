@@ -13,8 +13,8 @@ def create_app():
 
     #app.register_blueprint(bp_health)
     #app.register_blueprint(bp_tournaments)
-    #app.register_blueprint(bp_players)
-    app.register_blueprint(bp_users)
+    app.register_blueprint(bp_players)
+    #app.register_blueprint(bp_users)
     app.register_blueprint(bp_games)
 
     @app.errorhandler(Exception)
