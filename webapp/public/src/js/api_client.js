@@ -1,41 +1,33 @@
-// webapp/public/src/js/api_client.js
 const API_BASE = window.DREAMX_API_BASE || "https://dreamx-v2.onrender.com";
 
-function getTgId() {
-  const id = window.DreamX?.getTgUserId?.();
-  return id ? String(id) : null;
-}
-
-function headers() {
+function _headers() {
+  const tgId = window.DreamX?.getTgUserId?.();
   const h = { "Content-Type": "application/json" };
-  const tgId = getTgId();
-  if (tgId) h["X-Tg-User-Id"] = tgId; // для POST-ів
+  if (tgId) h["X-Tg-User-Id"] = tgId; // хай буде
   return h;
 }
 
 async function apiGet(path) {
-  const r = await fetch(`${API_BASE}${path}`, { headers: headers() });
+  const r = await fetch(`${API_BASE}${path}`, { headers: _headers() });
   return await r.json();
 }
 
 async function apiPost(path, body) {
   const r = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: headers(),
+    headers: _headers(),
     body: JSON.stringify(body || {}),
   });
   return await r.json();
 }
 
 window.Api = {
+  // ✅ ТУТ ФІКС:
   me: () => {
-    const tgId = getTgId();
-    // ВАЖЛИВО: players.me читає tg_user_id з query -> додаємо його сюди
+    const tgId = window.DreamX?.getTgUserId?.();
     return apiGet(`/players/me?tg_user_id=${encodeURIComponent(tgId || "")}`);
   },
 
-  botPlay: (move) => {
-    const tgId = getTgId();
-    return apiPost("/games/bot/play", { tg_user_id: tgId, move });
-  },
+  // ✅ будемо грати через один ендпоінт
+  botPlay: (move) => apiPost("/games/bot/play", { move }),
 };
