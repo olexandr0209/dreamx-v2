@@ -1,1 +1,124 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body.dx {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden; /* важливо: скрол тільки всередині .dx-content */
+}
+
+.dx-app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dx-topbar {
+  height: calc(var(--topbar-h) + var(--safe-top));
+  padding-top: var(--safe-top);
+  background: var(--surface);
+  border-bottom: 1px solid var(--stroke);
+  flex: 0 0 auto;
+}
+
+.dx-topbar__inner {
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+}
+
+.dx-content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px;
+  padding-bottom: calc(14px + var(--bottombar-h) + var(--safe-bottom));
+}
+
+.dx-bottombar {
+  height: calc(var(--bottombar-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--stroke);
+  flex: 0 0 auto;
+}
+
+.dx-bottombar__inner {
+  height: var(--bottombar-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 14px;
+}
+
+.dx-bottombar__label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* UI atoms */
+.dx-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dx-brand__logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.dx-brand__title {
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.dx-brand__subtitle {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.dx-chip {
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  border: 1px solid var(--stroke);
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.dx-btn {
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-xl);
+  padding: 16px 16px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: var(--shadow-1);
+  cursor: pointer;
+}
+
+.dx-btn--primary {
+  background: var(--primary);
+  color: var(--primary-ink);
+}
+
+.dx-btn:active {
+  transform: translateY(1px);
+}
 
