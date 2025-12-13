@@ -1,6 +1,4 @@
--- 004_players_points.sql
--- Додаємо фінансово-рейтингові поля гравця (players), базова валюта/очки
-
+-- 004_users_points.sql
 ALTER TABLE users
 ADD COLUMN IF NOT EXISTS points BIGINT NOT NULL DEFAULT 0;
 
