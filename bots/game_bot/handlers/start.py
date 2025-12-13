@@ -1,11 +1,13 @@
 from aiogram import Router
 from aiogram.types import Message
+from aiogram.filters import Command
 import requests
 import os
 
 router = Router()
 
 API_BASE = os.getenv("API_BASE_URL", "https://dreamx-v2.onrender.com")
+
 
 @router.message(Command("start"))
 async def start_handler(message: Message):
