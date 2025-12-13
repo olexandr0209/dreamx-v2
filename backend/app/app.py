@@ -11,9 +11,9 @@ from app.api.games import bp_games
 def create_app():
     app = Flask(__name__)
 
-    app.register_blueprint(bp_health)
-    app.register_blueprint(bp_tournaments)
-    app.register_blueprint(bp_players)
+    #app.register_blueprint(bp_health)
+    #app.register_blueprint(bp_tournaments)
+    #app.register_blueprint(bp_players)
     app.register_blueprint(bp_users)
     app.register_blueprint(bp_games)
 
