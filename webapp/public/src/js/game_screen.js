@@ -1,4 +1,3 @@
-// webapp/public/src/js/game_screen.js
 (function () {
   function moveLabel(m) {
     if (m === "rock") return "Камінь";
@@ -8,7 +7,7 @@
 
   function setPointsUI(points) {
     const el = document.querySelector("[data-points]");
-    if (el) el.textContent = String(points);
+    if (el) el.textContent = String(points ?? 0);
   }
 
   function setStatusUI(text) {
@@ -25,40 +24,45 @@
 
   async function loadProfile() {
     const data = await window.Api.me();
-    if (!data.ok) throw new Error(data.error || "me failed");
-    setPointsUI(data.user.points ?? 0);
+    if (!data.ok) throw new Error(data.error || "me_failed");
+    setPointsUI(data.user?.points ?? 0);
   }
 
-  async function onPlay(move) {
+  async function onPlay(userMove) {
     try {
-      const res = await window.Api.botPlay(move);
-      if (!res.ok) throw new Error(res.error || "bot_play_failed");
+      setStatusUI("⏳ Граємо...");
+      const res = await window.Api.botPlay(userMove);
 
-      setMovesUI(move, res.bot_move);
+      if (!res.ok) {
+        setStatusUI("⚠️ " + (res.error || "Помилка"));
+        return;
+      }
+
+      setMovesUI(res.user_move, res.bot_move);
+      setPointsUI(res.points);
 
       if (res.result === "win") setStatusUI("✅ Перемога!");
       else if (res.result === "lose") setStatusUI("❌ Поразка");
       else setStatusUI("🤝 Нічия");
-
-      setPointsUI(res.points);
     } catch (e) {
       setStatusUI("⚠️ Помилка. Спробуй ще раз.");
     }
   }
 
   async function init() {
-    try {
-      await loadProfile();
-    } catch (e) {
-      setStatusUI("⚠️ Не вдалось завантажити профіль");
-      return;
-    }
-
+    // 1) підвішуємо кнопки одразу (навіть якщо профіль не завантажиться)
     document.querySelectorAll("[data-move]").forEach((btn) => {
       btn.addEventListener("click", () => onPlay(btn.dataset.move));
     });
 
-    setStatusUI("Зроби вибір 👇");
+    // 2) пробуємо завантажити профіль
+    try {
+      await loadProfile();
+      setStatusUI("Зроби вибір 👇");
+    } catch (e) {
+      setStatusUI("⚠️ Не вдалось завантажити профіль");
+    }
+
     setMovesUI(null, null);
   }
 
