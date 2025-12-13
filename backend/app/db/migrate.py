@@ -2,7 +2,8 @@ import os
 import sys
 from pathlib import Path
 
-from app.db.connection import get_conn
+from connection import get_conn
+
 
 SCHEMA_DIR = Path(__file__).parent / "schema"
 
