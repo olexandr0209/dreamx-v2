@@ -1,6 +1,6 @@
 # backend/api/players.py
 from flask import Blueprint, jsonify, request
-from backend.db.db import fetch_one, execute_returning_one, execute
+from db.db import fetch_one, execute_returning_one, execute
 
 bp_players = Blueprint("players", __name__, url_prefix="/players")
 
