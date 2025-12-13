@@ -1,4 +1,4 @@
-#
+# bots/game_bot/handlers/start.py
 
 from aiogram import Router
 from aiogram.types import Message
