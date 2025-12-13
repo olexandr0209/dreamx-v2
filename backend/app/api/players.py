@@ -18,25 +18,23 @@ def _get_tg_user_id():
 
 @bp_players.get("/me")
 def me():
-    tg_user_id = _get_tg_user_id()
+    tg_user_id = request.args.get("tg_user_id", type=int)
     if not tg_user_id:
-        return jsonify({"ok": False, "error": "missing tg_user_id"}), 400
+        return jsonify({"ok": False, "error": "bad_request"}), 400
 
-    row = fetch_one(
+    user = fetch_one(
         """
-        SELECT id, tg_user_id, username, first_name, last_name, language_code,
-               photo_url, points, points_tour, created_at, updated_at
+        SELECT id, tg_user_id, username, first_name, last_name, language_code, photo_url,
+               points, points_tour, created_at, updated_at
         FROM users
-        WHERE tg_user_id = %s
+        WHERE tg_user_id=%s
         """,
-        (tg_user_id,),
+        (tg_user_id,)
     )
+    if not user:
+        return jsonify({"ok": False, "error": "user_not_found"}), 404
 
-    if not row:
-        return jsonify({"ok": False, "error": "user not found"}), 404
-
-    return jsonify({"ok": True, "user": row})
-
+    return jsonify({"ok": True, "user": user})
 
 @bp_players.post("/add_points")
 def add_points():
