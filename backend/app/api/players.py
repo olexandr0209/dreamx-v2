@@ -90,3 +90,41 @@ def set_photo_url():
     )
     return jsonify({"ok": True})
 
+@bp_players.post("/upsert")
+def upsert():
+    body = request.get_json(silent=True) or {}
+
+    tg_user_id = body.get("tg_user_id")
+    if tg_user_id is None:
+        return jsonify({"ok": False, "error": "missing tg_user_id"}), 400
+
+    try:
+        tg_user_id = int(tg_user_id)
+    except:
+        return jsonify({"ok": False, "error": "tg_user_id must be int"}), 400
+
+    username = body.get("username")
+    first_name = body.get("first_name")
+    last_name = body.get("last_name")
+    language_code = body.get("language_code")
+    photo_url = body.get("photo_url")  # може бути None
+
+    user = execute_returning_one(
+        """
+        INSERT INTO users (tg_user_id, username, first_name, last_name, language_code, photo_url)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        ON CONFLICT (tg_user_id) DO UPDATE
+        SET username = EXCLUDED.username,
+            first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            language_code = EXCLUDED.language_code,
+            photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
+            updated_at = NOW()
+        RETURNING id, tg_user_id, username, first_name, last_name, language_code, photo_url,
+                  points, points_tour, created_at, updated_at
+        """,
+        (tg_user_id, username, first_name, last_name, language_code, photo_url),
+    )
+
+    return jsonify({"ok": True, "user": user})
+
