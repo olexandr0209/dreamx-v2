@@ -11,12 +11,6 @@ def upsert_player():
     if not tg_user_id:
         return jsonify({"ok": False, "error": "tg_user_id is required"}), 400
 
-    username = data.get("username")
-    first_name = data.get("first_name")
-    last_name = data.get("last_name")
-    language_code = data.get("language_code")
-    photo_url = data.get("photo_url")
-
     row = execute_returning_one(
         """
         INSERT INTO users (tg_user_id, username, first_name, last_name, language_code, photo_url)
@@ -28,9 +22,18 @@ def upsert_player():
             language_code = EXCLUDED.language_code,
             photo_url = EXCLUDED.photo_url,
             updated_at = NOW()
-        RETURNING id, tg_user_id, username, first_name, last_name, language_code, photo_url, points, points_tour, created_at, updated_at;
+        RETURNING
+            id, tg_user_id, username, first_name, last_name, language_code, photo_url,
+            points, points_tour, created_at, updated_at;
         """,
-        (tg_user_id, username, first_name, last_name, language_code, photo_url),
+        (
+            tg_user_id,
+            data.get("username"),
+            data.get("first_name"),
+            data.get("last_name"),
+            data.get("language_code"),
+            data.get("photo_url"),
+        ),
     )
 
     return jsonify({"ok": True, "player": row}), 200
