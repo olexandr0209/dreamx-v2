@@ -30,7 +30,23 @@
         <button class="dx-btn dx-btn--primary" onclick="window.location.href='./index.html'">Назад</button>
       </div>
     </main>
+  
+  <!-- десь у верхній зоні екрану -->
+  <div class="points-pill">Очки: <span data-points>0</span></div>
+  
+  <!-- у карточці -->
+  <div class="status" data-status>...</div>
+  <div class="moves">
+    <div>Ти: <b data-user-move>—</b></div>
+    <div>Бот: <b data-bot-move>—</b></div>
+  </div>
+  
+  <!-- кнопки -->
+  <button class="rps-btn" data-move="rock">Камінь</button>
+  <button class="rps-btn" data-move="scissors">Ножиці</button>
+  <button class="rps-btn" data-move="paper">Бумага</button>
 
+    
     <footer class="dx-bottombar">
       <div class="dx-bottombar__inner">
         <div class="dx-bottombar__label">Навігація</div>
@@ -39,6 +55,9 @@
   </div>
 
   <script src="/src/js/dreamx_core.js"></script>
+  <script src="/src/js/api_client.js"></script>
+  <script src="/src/js/game_screen.js"></script>
+
   <link rel="stylesheet" href="/src/css/home.css" />
 </body>
 </html>
