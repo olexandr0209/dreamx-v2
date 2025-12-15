@@ -114,3 +114,183 @@
     font-size: 13px;
   }
 }
+
+/* pvp.css — стилі тільки для PvP, щоб не зачепити game.css */
+
+.dx-pvp .dx-game-card{
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
+  padding: 14px;
+}
+
+/* VS row */
+.dx-pvp .dx-pvp-vs{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin: 6px 0 10px;
+}
+
+.dx-pvp .dx-pvp-side{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dx-pvp .dx-pvp-name{
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.dx-pvp .dx-pvp-vs__mid{
+  font-weight: 900;
+  letter-spacing: 1px;
+  opacity: .6;
+}
+
+/* маленький avatar */
+.dx-pvp .dx-avatar.dx-avatar--sm{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.10);
+  display:grid;
+  place-items:center;
+  flex: 0 0 auto;
+}
+
+.dx-pvp .dx-avatar.dx-avatar--sm span{
+  font-size: 12px;
+  font-weight: 900;
+  opacity: .75;
+}
+
+/* Counters row як у game */
+.dx-pvp .dx-counters-row{
+  display:flex;
+  gap:10px;
+  margin: 4px 0 12px;
+}
+
+.dx-pvp .dx-pill{
+  flex: 1;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid var(--stroke);
+  font-size: 14px;
+}
+
+.dx-pvp .dx-pill b{ font-size: 15px; }
+
+/* Заголовок/статус */
+.dx-pvp .dx-game-title{
+  margin: 6px 0 2px;
+  font-size: 26px;
+  letter-spacing: 0.2px;
+}
+
+.dx-pvp .dx-game-status{
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* Board */
+.dx-pvp .dx-round-board{
+  margin: 12px 0 10px;
+}
+
+.dx-pvp .dx-round-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin: 6px 0;
+}
+
+.dx-pvp .dx-round-label{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,.08);
+  display:grid;
+  place-items:center;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.dx-pvp .dx-dots{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.dx-pvp .dx-dot{
+  width: clamp(34px, 9.5vw, 42px);
+  height: clamp(34px, 9.5vw, 42px);
+  border-radius:999px;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid rgba(0,0,0,.08);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size: 18px;
+  user-select:none;
+}
+
+.dx-pvp .dx-dot--score{
+  background: rgba(37, 99, 235, 0.12);
+  border: 1px solid rgba(37, 99, 235, 0.25);
+  font-weight: 900;
+}
+
+/* Buttons */
+.dx-pvp .dx-rps-buttons{
+  display:flex;
+  gap:10px;
+  margin: 12px 0 12px;
+}
+
+.dx-pvp .dx-rps-btn{
+  flex: 1;
+  min-height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  font-weight: 800;
+  font-size: 14px;
+  box-shadow: 0 8px 18px rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+
+.dx-pvp .dx-rps-btn:active{
+  transform: translateY(1px);
+}
+
+.dx-pvp .dx-back{ margin-top: 6px; }
+
+/* iPhone 8 / narrow */
+@media (max-width: 360px){
+  .dx-pvp .dx-game-title{ font-size: 22px; }
+  .dx-pvp .dx-counters-row{ flex-direction: column; }
+  .dx-pvp .dx-rps-buttons{ flex-direction: column; }
+  .dx-pvp .dx-pvp-name{ max-width: 110px; }
+}
