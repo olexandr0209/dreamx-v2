@@ -1,25 +1,26 @@
 // game_screen.js
 
 (function () {
-  // ===== Round state (NEW) =====
-  let round = 1;        // номер раунду
-  let step = 0;         // 0..2 (3 гри)
-  let roundPoints = 0;  // очки за раунд
+  const MOVES = ["rock", "scissors", "paper"];
 
-  function moveLabel(m) {
-    if (m === "rock") return "Камінь";
-    if (m === "scissors") return "Ножиці";
-    return "Бумага";
-  }
-
-  function moveShort(m) {
-    if (m === "rock") return "К";
-    if (m === "scissors") return "Н";
-    return "Б";
+  function moveEmoji(m) {
+    if (m === "rock") return "🪨";
+    if (m === "scissors") return "✂️";
+    return "📄";
   }
 
   function setPointsUI(points) {
     const el = document.querySelector("[data-points]");
+    if (el) el.textContent = String(points ?? 0);
+  }
+
+  function setRoundUI(round) {
+    const el = document.querySelector("[data-round]");
+    if (el) el.textContent = String(round ?? 1);
+  }
+
+  function setRoundPointsUI(points) {
+    const el = document.querySelector("[data-round-points]");
     if (el) el.textContent = String(points ?? 0);
   }
 
@@ -28,130 +29,124 @@
     if (el) el.textContent = text;
   }
 
-  // OLD: залишаємо, якщо в тебе є ці поля
-  function setMovesUI(userMove, botMove) {
-    const u = document.querySelector("[data-user-move]");
-    const b = document.querySelector("[data-bot-move]");
-    if (u) u.textContent = userMove ? moveLabel(userMove) : "—";
-    if (b) b.textContent = botMove ? moveLabel(botMove) : "—";
-  }
-
-  // ===== NEW helpers (нічого не ламають, якщо елементів немає) =====
-  function setRoundUI(val) {
-    const el = document.querySelector("[data-round]");
-    if (el) el.textContent = String(val);
-  }
-
-  function setRoundScoreUI(val) {
-    const el = document.querySelector("[data-round-score]");
-    if (el) el.textContent = String(val);
-  }
-
-  function setAvatarUI(url) {
+  function setAvatar(url) {
     const img = document.querySelector("[data-avatar]");
     if (!img) return;
-    if (url) img.src = url;
+    img.src = url || "";
   }
 
-  function paintCircle(selector, move, result) {
-    const el = document.querySelector(selector);
-    if (!el) return; // якщо кружечків нема — просто пропускаємо
-    el.textContent = move ? moveShort(move) : "";
-    el.classList.remove("win", "draw", "lose");
-    if (result) el.classList.add(result);
+  function setSlot(kind, idx, move) {
+    const sel =
+      kind === "user"
+        ? `[data-user-slot="${idx}"]`
+        : `[data-bot-slot="${idx}"]`;
+    const el = document.querySelector(sel);
+    if (!el) return;
+    el.textContent = move ? moveEmoji(move) : "";
   }
 
-  function resetRoundCircles() {
+  function clearRoundSlots() {
     for (let i = 0; i < 3; i++) {
-      paintCircle(`[data-user-${i}]`, null, null);
-      paintCircle(`[data-bot-${i}]`, null, null);
+      setSlot("user", i, null);
+      setSlot("bot", i, null);
     }
-    setRoundScoreUI(0);
-    roundPoints = 0;
-    step = 0;
+    setRoundPointsUI(0);
   }
+
+  function setButtonsEnabled(enabled) {
+    document.querySelectorAll("[data-move]").forEach((btn) => {
+      btn.disabled = !enabled;
+      btn.style.opacity = enabled ? "1" : "0.6";
+    });
+  }
+
+  let round = 1;
+  let step = 0; // 0..2
+  let roundPoints = 0;
 
   async function loadProfile() {
     const data = await window.Api.me();
     if (!data.ok) throw new Error(data.error || "me_failed");
 
+    // очки з БД
     setPointsUI(data.user?.points ?? 0);
 
-    // NEW: аватар (якщо у тебе вже є data-avatar в HTML)
-    setAvatarUI(data.user?.photo_url || null);
-
-    // NEW: раунд UI (якщо є)
-    setRoundUI(round);
-    resetRoundCircles();
-  }
-
-  function pointsForResult(result) {
-    if (result === "win") return 3;
-    if (result === "draw") return 2;
-    return 0; // lose
+    // avatar з БД (photo_url)
+    setAvatar(data.user?.photo_url || "");
   }
 
   async function onPlay(userMove) {
-    try {
-      // якщо раунд вже завершився — блокуємо кліки до reset
-      if (step >= 3) return;
+    if (!MOVES.includes(userMove)) return;
+    if (step >= 3) return;
 
+    try {
+      setButtonsEnabled(false);
       setStatusUI("⏳ Граємо...");
+
       const res = await window.Api.botPlay(userMove);
 
       if (!res.ok) {
         setStatusUI("⚠️ " + (res.error || "Помилка"));
+        setButtonsEnabled(true);
         return;
       }
 
-      // OLD UI лишається
-      setMovesUI(res.user_move, res.bot_move);
+      // заповнюємо кружечки (3 гри)
+      setSlot("user", step, res.user_move);
+      setSlot("bot", step, res.bot_move);
+
+      // очки за гру (з бекенда)
+      const delta = Number(res.points_delta ?? 0);
+      roundPoints += delta;
+      setRoundPointsUI(roundPoints);
+
+      // загальні очки (з БД)
       setPointsUI(res.points);
 
-      // NEW: кружечки (якщо є в HTML)
-      paintCircle(`[data-user-${step}]`, res.user_move, res.result);
-      paintCircle(`[data-bot-${step}]`, res.bot_move, res.result);
+      if (res.result === "win") setStatusUI(`✅ +${delta} (перемога)`);
+      else if (res.result === "draw") setStatusUI(`🤝 +${delta} (нічия)`);
+      else setStatusUI(`❌ +${delta} (поразка)`);
 
-      // NEW: очки раунду
-      roundPoints += pointsForResult(res.result);
-      setRoundScoreUI(roundPoints);
+      step += 1;
 
-      if (res.result === "win") setStatusUI("✅ Перемога!");
-      else if (res.result === "lose") setStatusUI("❌ Поразка");
-      else setStatusUI("🤝 Нічия");
-
-      step++;
-
-      // NEW: якщо 3 гри зіграно — новий раунд
+      // кінець раунду (3 гри)
       if (step === 3) {
+        setStatusUI("✅ Раунд завершено");
+        round += 1;
+        setRoundUI(round);
+
+        // коротка пауза і очищаємо для нового раунду
         setTimeout(() => {
-          round += 1;
-          setRoundUI(round);
-          resetRoundCircles();
-          setMovesUI(null, null);
+          step = 0;
+          roundPoints = 0;
+          clearRoundSlots();
           setStatusUI("Зроби вибір 👇");
         }, 700);
       }
     } catch (e) {
       setStatusUI("⚠️ Помилка. Спробуй ще раз.");
+    } finally {
+      setButtonsEnabled(true);
     }
   }
 
   async function init() {
-    // OLD: підвішуємо кнопки
+    setRoundUI(round);
+    clearRoundSlots();
+
     document.querySelectorAll("[data-move]").forEach((btn) => {
       btn.addEventListener("click", () => onPlay(btn.dataset.move));
     });
 
-    // OLD: завантажуємо профіль
     try {
       await loadProfile();
       setStatusUI("Зроби вибір 👇");
     } catch (e) {
+      // важливо: показуємо причину, щоб ти одразу бачив що саме
       setStatusUI("⚠️ Не вдалось завантажити профіль");
+      // якщо хочеш супер-точно: розкоментуй
+      // console.error(e);
     }
-
-    setMovesUI(null, null);
   }
 
   document.addEventListener("DOMContentLoaded", init);
