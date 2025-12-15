@@ -1,0 +1,116 @@
+/* =========================
+   DreamX • PvP
+   ========================= */
+
+.dx-pvp-card {
+  max-width: 520px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-1);
+  padding: 16px;
+}
+
+/* ---------- Status ---------- */
+
+.dx-pvp-status {
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 6px 0 14px;
+}
+
+/* ---------- Players ---------- */
+
+.dx-pvp-players {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dx-pvp-player {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dx-pvp-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(0,0,0,0.08);
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+.dx-pvp-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dx-pvp-name {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---------- VS ---------- */
+
+.dx-pvp-vs {
+  font-weight: 900;
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+/* ---------- Buttons ---------- */
+
+.dx-pvp-buttons {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.dx-pvp-btn {
+  flex: 1;
+  min-height: 46px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+}
+
+.dx-pvp-btn:active {
+  transform: translateY(1px);
+}
+
+.dx-pvp-btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---------- Result ---------- */
+
+.dx-pvp-result {
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+  margin-top: 10px;
+}
+
+/* ---------- Mobile (iPhone 8) ---------- */
+
+@media (max-width: 360px) {
+  .dx-pvp-buttons {
+    flex-direction: column;
+  }
+
+  .dx-pvp-btn {
+    min-height: 44px;
+    font-size: 13px;
+  }
+}
