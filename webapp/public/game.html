@@ -1,5 +1,3 @@
-<!-- game.html -->
-
 <!doctype html>
 <html lang="uk">
 <head>
@@ -10,7 +8,6 @@
   <link rel="stylesheet" href="/src/css/tokens.css" />
   <link rel="stylesheet" href="/src/css/layout.css" />
   <link rel="stylesheet" href="/src/css/game.css" />
-  <link rel="stylesheet" href="/src/css/home.css" />
 </head>
 
 <body class="dx theme-light">
@@ -31,59 +28,66 @@
     </header>
 
     <!-- CONTENT -->
-    <main class="dx-content">
+    <main class="dx-content dx-game">
+      <section class="dx-game-card">
 
-      <!-- Аватар гравця -->
-      <div class="player-avatar">
-        <img data-avatar src="" alt="avatar" />
-      </div>
-
-      <!-- Раунд + очки -->
-      <div class="round-pill">
-        Раунд: <span data-round>1</span>
-      </div>
-
-      <div class="points-pill">
-        Очки: <span data-points>0</span>
-      </div>
-
-      <!-- Карточка гри -->
-      <div class="home-hero">
-        <h1 class="home-title">RPS</h1>
-        <p class="home-subtitle" data-status>Зроби вибір 👇</p>
-
-        <!-- Сітка раунду -->
-        <div class="round-grid">
-          <div class="row">
-            <span class="label">BOT</span>
-            <div class="circle" data-bot-0></div>
-            <div class="circle" data-bot-1></div>
-            <div class="circle" data-bot-2></div>
-            <div class="circle score" data-round-score>0</div>
-          </div>
-
-          <div class="row">
-            <span class="label">ТИ</span>
-            <div class="circle" data-user-0></div>
-            <div class="circle" data-user-1></div>
-            <div class="circle" data-user-2></div>
+        <!-- Avatar center -->
+        <div class="dx-game-avatar">
+          <div class="dx-avatar">
+            <img data-avatar src="" alt="avatar" />
           </div>
         </div>
 
-        <!-- Кнопки вибору -->
-        <div class="rps-buttons">
-          <button class="rps-btn" data-move="rock">Камінь</button>
-          <button class="rps-btn" data-move="scissors">Ножиці</button>
-          <button class="rps-btn" data-move="paper">Бумага</button>
+        <!-- Counters row -->
+        <div class="dx-counters-row">
+          <div class="dx-pill">
+            <span>Раунд</span>
+            <b><span data-round>1</span></b>
+          </div>
+          <div class="dx-pill">
+            <span>Очки</span>
+            <b><span data-points>0</span></b>
+          </div>
         </div>
 
-        <!-- Назад -->
-        <button
-          class="dx-btn dx-btn--primary"
+        <h1 class="dx-game-title">RPS</h1>
+        <p class="dx-game-status" data-status>Зроби вибір 👇</p>
+
+        <!-- Board -->
+        <div class="dx-round-board">
+          <div class="dx-round-row">
+            <div class="dx-round-label">BOT</div>
+            <div class="dx-dots">
+              <div class="dx-dot" data-bot-0></div>
+              <div class="dx-dot" data-bot-1></div>
+              <div class="dx-dot" data-bot-2></div>
+              <div class="dx-dot dx-dot--score" data-round-score>0</div>
+            </div>
+          </div>
+
+          <div class="dx-round-row">
+            <div class="dx-round-label">ТИ</div>
+            <div class="dx-dots">
+              <div class="dx-dot" data-user-0></div>
+              <div class="dx-dot" data-user-1></div>
+              <div class="dx-dot" data-user-2></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="dx-rps-buttons">
+          <button class="dx-rps-btn" data-move="rock">Камінь</button>
+          <button class="dx-rps-btn" data-move="scissors">Ножиці</button>
+          <button class="dx-rps-btn" data-move="paper">Бумага</button>
+        </div>
+
+        <button class="dx-btn dx-btn--primary dx-back"
           onclick="window.location.href='./index.html'">
           Назад
         </button>
-      </div>
+
+      </section>
     </main>
 
     <!-- BOTTOM BAR -->
