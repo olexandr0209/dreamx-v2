@@ -61,11 +61,12 @@ def upsert():
         INSERT INTO users (tg_user_id, username, first_name, last_name, language_code, photo_url)
         VALUES (%s, %s, %s, %s, %s, %s)
         ON CONFLICT (tg_user_id) DO UPDATE
-        SET username = EXCLUDED.username,
-            first_name = EXCLUDED.first_name,
-            last_name = EXCLUDED.last_name,
-            language_code = EXCLUDED.language_code,
-            photo_url = COALESCE(EXCLUDED.photo_url, users.photo_url),
+        SET
+            username = COALESCE(NULLIF(EXCLUDED.username, ''), users.username),
+            first_name = COALESCE(NULLIF(EXCLUDED.first_name, ''), users.first_name),
+            last_name = COALESCE(NULLIF(EXCLUDED.last_name, ''), users.last_name),
+            language_code = COALESCE(NULLIF(EXCLUDED.language_code, ''), users.language_code),
+            photo_url = COALESCE(NULLIF(EXCLUDED.photo_url, ''), users.photo_url),
             updated_at = NOW()
         RETURNING id, tg_user_id, username, first_name, last_name,
                   language_code, photo_url, points, points_tour,
