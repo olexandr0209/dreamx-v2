@@ -1,3 +1,5 @@
+//  home_screen.js 
+
 document.addEventListener("DOMContentLoaded", () => {
   const btn = document.getElementById("btn-play-bot");
   if (!btn) return;
