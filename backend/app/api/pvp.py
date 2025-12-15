@@ -41,6 +41,7 @@ def _points_for(result: str):
 @bp_pvp.post("/queue/join")
 def join_queue():
     tg_user_id = _get_tg_user_id()
+    print(">>> PVP JOIN QUEUE CALLED")  # ← ДОДАЙ ЦЕ
     if not tg_user_id:
         return jsonify({"ok": False, "error": "missing_tg_user_id"}), 400
 
