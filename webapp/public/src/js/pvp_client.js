@@ -51,7 +51,10 @@ window.PvP = {
   joinQueue: async () => {
     const tgId = getTgUserId();
     if (!tgId) return { ok: false, error: "no_tg_user_id" };
-
+    // 🔑 ГАРАНТУЄМО, що user існує
+    if (window.Api?.ensure) {
+       await window.Api.ensure();
+    }     
     return apiPost(`/pvp/queue/join?tg_user_id=${encodeURIComponent(tgId)}`);
   },
 
