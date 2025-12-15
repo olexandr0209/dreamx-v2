@@ -35,6 +35,8 @@ def bot_play():
     user_move = data.get("move")
     print("tg_user_id:", tg_user_id)
     print("move:", user_move, "content-type:", request.content_type)
+    print("HIT /games/bot/play", request.method, request.args, dict(request.form))
+
 
     if not tg_user_id:
         return jsonify({"ok": False, "error": "missing_tg_user_id"}), 400
