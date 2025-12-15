@@ -25,10 +25,9 @@ function getTgUserId() {
 }
 
 function _headers() {
-  const tgId = getTgUserId();
-  const h = { "Content-Type": "application/json" };
-  if (tgId) h["X-Tg-User-Id"] = tgId;
-  return h;
+  // ⚠️ ВАЖЛИВО: НЕ додаємо кастомні headers (X-Tg-User-Id),
+  // щоб не ловити CORS preflight / блокування браузером.
+  return { "Content-Type": "application/json" };
 }
 
 async function apiGet(path) {
@@ -55,13 +54,10 @@ async function apiPost(path, body) {
 window.Api = {
   /**
    * 🔑 Ensure user exists in DB (upsert)
-   * MUST be called before any game / me / stats
    */
   ensure: async () => {
     const tgId = getTgUserId();
-    if (!tgId) {
-      return { ok: false, error: "no_tg_user_id" };
-    }
+    if (!tgId) return { ok: false, error: "no_tg_user_id" };
 
     const tg = getTgUser();
 
@@ -77,7 +73,6 @@ window.Api = {
 
   /**
    * 👤 Get my profile
-   * (automatically ensures user first)
    */
   me: async () => {
     const ensured = await window.Api.ensure();
@@ -94,6 +89,8 @@ window.Api = {
     const ensured = await window.Api.ensure();
     if (!ensured.ok) return ensured;
 
-    return apiPost("/games/bot/play", { move });
+    const tgId = getTgUserId();
+    // tg_user_id передаємо в query, щоб бек гарантовано отримав його без header
+    return apiPost(`/games/bot/play?tg_user_id=${encodeURIComponent(tgId)}`, { move });
   },
 };
