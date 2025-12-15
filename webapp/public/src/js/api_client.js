@@ -31,21 +31,28 @@ function _headers() {
 }
 
 async function apiGet(path) {
-  const r = await fetch(`${API_BASE}${path}`, {
-    method: "GET",
-    headers: _headers(),
-  });
+  // ✅ Без headers → без preflight
+  const r = await fetch(`${API_BASE}${path}`, { method: "GET" });
   return await r.json();
 }
 
 async function apiPost(path, body) {
+  // ✅ Simple request → без preflight
+  const form = new URLSearchParams();
+  for (const [k, v] of Object.entries(body || {})) {
+    if (v === undefined || v === null) continue;
+    form.append(k, String(v));
+  }
+
   const r = await fetch(`${API_BASE}${path}`, {
     method: "POST",
-    headers: _headers(),
-    body: JSON.stringify(body || {}),
+    headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+    body: form.toString(),
   });
+
   return await r.json();
 }
+
 
 /* =========================
    API
