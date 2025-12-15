@@ -50,8 +50,14 @@ def bot_play():
     bot_move = random.choice(MOVES)
     result = decide(user_move, bot_move)
 
-    # очки: win +1, draw 0, lose 0 (або зроби lose -1 якщо хочеш)
-    points_delta = 1 if result == "win" else 0
+    # НОВІ ОЧКИ: win +3, draw +1, lose +0
+    if result == "win":
+        points_delta = 3
+    elif result == "draw":
+        points_delta = 1
+    else:
+        points_delta = 0
+
 
     row = execute_returning_one(
         """
