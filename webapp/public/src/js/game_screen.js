@@ -19,10 +19,16 @@
     if (el) el.textContent = String(round ?? 1);
   }
 
-  function setRoundPointsUI(points) {
+  function setBotRoundPointsUI(points) {
     const el = document.querySelector("[data-round-score]");
     if (el) el.textContent = String(points ?? 0);
   }
+  
+  function setUserRoundPointsUI(points) {
+    const el = document.querySelector("[data-user-round-score]");
+    if (el) el.textContent = String(points ?? 0);
+  }
+
 
 
   function setStatusUI(text) {
