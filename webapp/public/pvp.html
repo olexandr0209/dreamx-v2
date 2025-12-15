@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX • PvP</title>
+
+  <link rel="stylesheet" href="/src/css/tokens.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+</head>
+
+<body class="dx theme-light">
+<div class="dx-app">
+
+  <!-- TOP BAR -->
+  <header class="dx-topbar">
+    <div class="dx-topbar__inner">
+      <div class="dx-brand">
+        <div class="dx-brand__logo">DX</div>
+        <div class="dx-brand__text">
+          <div class="dx-brand__title">PvP</div>
+          <div class="dx-brand__subtitle">1 vs 1</div>
+        </div>
+      </div>
+      <div class="dx-chip">Live</div>
+    </div>
+  </header>
+
+  <!-- CONTENT -->
+  <main class="dx-content">
+    <section class="dx-game-card">
+
+      <h1 style="margin-top:0">Камінь • Ножиці • Папір</h1>
+
+      <p id="pvp-status" class="dx-game-status">
+        Підключення до черги...
+      </p>
+
+      <!-- Buttons -->
+      <div class="dx-rps-buttons">
+        <button class="dx-rps-btn" data-move="rock">🪨 Камінь</button>
+        <button class="dx-rps-btn" data-move="scissors">✂️ Ножиці</button>
+        <button class="dx-rps-btn" data-move="paper">📄 Бумага</button>
+      </div>
+
+      <button class="dx-btn dx-btn--primary"
+              style="margin-top:12px"
+              onclick="window.location.href='./index.html'">
+        Назад
+      </button>
+
+    </section>
+  </main>
+
+  <!-- BOTTOM BAR -->
+  <footer class="dx-bottombar">
+    <div class="dx-bottombar__inner">
+      <div class="dx-bottombar__label">
+        Created by Oleksandr Krychylskyi
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- JS -->
+<script src="/src/js/dreamx_core.js"></script>
+<script src="/src/js/api_client.js"></script>
+<script src="/src/js/pvp_client.js"></script>
+<script src="/src/js/pvp_screen.js"></script>
+
+<script>
+  const statusEl = document.getElementById("pvp-status");
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+  }
+
+  // ===== HOOK EVENTS =====
+
+  PvPScreen.events.onQueueJoined = () => {
+    setStatus("🔍 Пошук суперника...");
+  };
+
+  PvPScreen.events.onWaitingOpponent = () => {
+    setStatus("⏳ Очікуємо другого гравця...");
+  };
+
+  PvPScreen.events.onMatchStarted = () => {
+    setStatus("⚔️ Гра почалась! Зроби хід 👇");
+  };
+
+  PvPScreen.events.onCanMove = () => {
+    setStatus("🎯 Твій хід");
+  };
+
+  PvPScreen.events.onRoundResolved = (res) => {
+    setStatus("✅ Хід зараховано");
+  };
+
+  PvPScreen.events.onError = (err) => {
+    console.error(err);
+    setStatus("⚠️ Помилка PvP");
+  };
+
+  // ===== BUTTONS =====
+
+  document.querySelectorAll("[data-move]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      PvPScreen.sendMove(btn.dataset.move);
+      setStatus("⏳ Очікуємо хід суперника...");
+    });
+  });
+
+  // ===== START =====
+  PvPScreen.start();
+</script>
+
+</body>
+</html>
