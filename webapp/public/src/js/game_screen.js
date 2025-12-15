@@ -1,3 +1,5 @@
+// game_screen.js
+
 (function () {
   function moveLabel(m) {
     if (m === "rock") return "Камінь";
