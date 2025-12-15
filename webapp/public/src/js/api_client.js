@@ -6,20 +6,21 @@ const API_BASE = window.DREAMX_API_BASE || "https://dreamx-v2.onrender.com";
    HELPERS
    ========================= */
 
+// ✅ мінімальний фікс: беремо user з DreamX (Telegram → localStorage fallback)
 function getTgUser() {
   try {
-    return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
+    return window.DreamX?.getUser?.() || window.Telegram?.WebApp?.initDataUnsafe?.user || null;
   } catch (e) {
     return null;
   }
 }
 
+// ✅ мінімальний фікс: tg_user_id теж через DreamX (не губиться при навігації)
 function getTgUserId() {
-  // 1) Telegram WebApp
-  const tgUser = getTgUser();
-  if (tgUser?.id) return String(tgUser.id);
+  const id = window.DreamX?.getTgUserId?.();
+  if (id) return String(id);
 
-  // 2) fallback: ?tg_user_id=...
+  // fallback: ?tg_user_id=... (залишаю як було)
   const p = new URLSearchParams(window.location.search);
   return p.get("tg_user_id");
 }
@@ -52,7 +53,6 @@ async function apiPost(path, body) {
 
   return await r.json();
 }
-
 
 /* =========================
    API
