@@ -279,10 +279,11 @@ def match_move():
 
                 round_col, step_col = _update_match_round_step_sql(match)
 
+                # ✅ ЄДИНА ПРАВКА: COALESCE щоб не падало на NULL
                 cur.execute(f"""
                     UPDATE pvp_matches
-                    SET score_p1 = score_p1 + %s,
-                        score_p2 = score_p2 + %s,
+                    SET score_p1 = COALESCE(score_p1, 0) + %s,
+                        score_p2 = COALESCE(score_p2, 0) + %s,
                         {step_col} = %s,
                         {round_col} = %s,
                         updated_at = NOW()
