@@ -58,8 +58,10 @@
       setSlot("user", i, null);
       setSlot("bot", i, null);
     }
-    setRoundPointsUI(0);
+    setBotRoundPointsUI(0);
+    setUserRoundPointsUI(0);
   }
+
 
   function setButtonsEnabled(enabled) {
     document.querySelectorAll("[data-move]").forEach((btn) => {
@@ -70,7 +72,9 @@
 
   let round = 1;
   let step = 0; // 0..2
-  let roundPoints = 0;
+  let userRoundPoints = 0;
+  let botRoundPoints = 0;
+
 
   async function loadProfile() {
     const data = await window.Api.me();
@@ -107,16 +111,30 @@
       setSlot("bot", step, res.bot_move);
 
       // очки за гру (з бекенда)
-      const delta = Number(res.points_delta ?? 0);
-      roundPoints += delta;
-      setRoundPointsUI(roundPoints);
+      const result = res.result;
+      
+      // бали за одну гру по правилах (незалежно від бекенда)
+      let userDelta = 0;
+      let botDelta = 0;
+      
+      if (result === "win") { userDelta = 3; botDelta = 0; }
+      else if (result === "draw") { userDelta = 1; botDelta = 1; }
+      else { userDelta = 0; botDelta = 3; }
+      
+      userRoundPoints += userDelta;
+      botRoundPoints += botDelta;
+      
+      setUserRoundPointsUI(userRoundPoints);
+      setBotRoundPointsUI(botRoundPoints);
+
 
       // загальні очки (з БД)
       setPointsUI(res.points);
 
-      if (res.result === "win") setStatusUI(`✅ +${delta} (перемога)`);
-      else if (res.result === "draw") setStatusUI(`🤝 +${delta} (нічия)`);
-      else setStatusUI(`❌ +${delta} (поразка)`);
+      if (result === "win") setStatusUI(`✅ +${userDelta} (перемога)`);
+      else if (result === "draw") setStatusUI(`🤝 +${userDelta} (нічия)`);
+      else setStatusUI(`❌ +${userDelta} (поразка)`);
+
 
       step += 1;
 
@@ -129,7 +147,9 @@
         // коротка пауза і очищаємо для нового раунду
         setTimeout(() => {
           step = 0;
-          roundPoints = 0;
+          userRoundPoints = 0;
+          botRoundPoints = 0;
+
           clearRoundSlots();
           setStatusUI("Зроби вибір 👇");
         }, 700);
