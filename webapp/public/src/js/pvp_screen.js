@@ -1,20 +1,16 @@
-// pvp_screen.js
-
+// webapp/public/src/js/pvp_screen.js
 (function () {
   if (!window.PvP) {
     console.error("[PvP] PvP client not loaded");
     return;
   }
 
-  const POLL_INTERVAL = 1500; // ms
+  const POLL_INTERVAL = 1500;
 
   let matchId = null;
   let pollTimer = null;
-  let lastStepKey = null;
 
-  /* =========================
-     EVENTS (hooks for UI)
-     ========================= */
+  let lastStatus = null; // щоб не спамити onMatchStarted
 
   const Events = {
     onQueueJoined: (match) => {},
@@ -26,10 +22,6 @@
     onError: (err) => {},
   };
 
-  /* =========================
-     CORE
-     ========================= */
-
   async function joinQueue() {
     const res = await window.PvP.joinQueue();
     if (!res.ok) {
@@ -38,8 +30,9 @@
     }
 
     matchId = res.match.id;
-    Events.onQueueJoined(res.match);
+    lastStatus = res.match.status || null;
 
+    Events.onQueueJoined(res.match);
     startPolling();
   }
 
@@ -55,36 +48,34 @@
     const match = res.match;
     Events.onStateUpdate(res);
 
+    // waiting
     if (match.status === "waiting") {
+      lastStatus = "waiting";
       Events.onWaitingOpponent(match);
       return;
     }
 
+    // playing
     if (match.status === "playing") {
-      Events.onMatchStarted(match);
+      if (lastStatus !== "playing") {
+        Events.onMatchStarted(match); // ✅ тільки 1 раз
+        lastStatus = "playing";
+      }
 
       if (res.can_move) {
         Events.onCanMove(res);
       }
 
-      detectStepResolution(match);
-    }
-  }
-
-  function detectStepResolution(match) {
-    const stepKey = `${match.round_number}:${match.step_in_round}`;
-
-    // якщо step змінився → попередній хід вирішено
-    if (lastStepKey && stepKey !== lastStepKey) {
-      Events.onRoundResolved(match);
+      return;
     }
 
-    lastStepKey = stepKey;
+    // інші стани (на майбутнє)
+    lastStatus = match.status;
   }
 
   async function sendMove(move) {
     if (!matchId) {
-      Events.onError({ error: "no_match" });
+      Events.onError({ ok: false, error: "no_match" });
       return;
     }
 
@@ -95,14 +86,17 @@
     }
 
     if (res.status === "resolved") {
-      Events.onRoundResolved(res);
+      Events.onRoundResolved(res); // ✅ тільки коли є реальний resolved payload
     }
+
+    // ✅ швидше оновлюємо стан
+    pollState();
   }
 
   function startPolling() {
     stopPolling();
     pollTimer = setInterval(pollState, POLL_INTERVAL);
-    pollState(); // одразу
+    pollState();
   }
 
   function stopPolling() {
@@ -112,16 +106,10 @@
     }
   }
 
-  /* =========================
-     PUBLIC API
-     ========================= */
-
   window.PvPScreen = {
     start: joinQueue,
     sendMove,
     stop: stopPolling,
-
-    // UI hooks
     events: Events,
   };
 })();
