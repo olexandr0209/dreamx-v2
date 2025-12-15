@@ -1,5 +1,7 @@
 // webapp/public/src/js/dreamx_core.js
 
+window.DREAMX_API_BASE = "https://dreamx-v2.onrender.com";
+
 window.DreamX = window.DreamX || {};
 
 const DREAMX_LS_TG_KEY = "dreamx_tg_user_id";
