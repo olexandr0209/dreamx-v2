@@ -1,5 +1,3 @@
-<!-- game.html -->
-
 <!doctype html>
 <html lang="uk">
 <head>
@@ -15,6 +13,8 @@
 
 <body class="dx theme-light">
   <div class="dx-app">
+
+    <!-- TOP BAR -->
     <header class="dx-topbar">
       <div class="dx-topbar__inner">
         <div class="dx-brand">
@@ -28,39 +28,72 @@
       </div>
     </header>
 
+    <!-- CONTENT -->
     <main class="dx-content">
-      <!-- Верхня плашка очок -->
-      <div class="points-pill">Очки: <span data-points>0</span></div>
+
+      <!-- Аватар гравця -->
+      <div class="player-avatar">
+        <img data-avatar src="" alt="avatar" />
+      </div>
+
+      <!-- Раунд + очки -->
+      <div class="round-pill">
+        Раунд: <span data-round>1</span>
+      </div>
+
+      <div class="points-pill">
+        Очки: <span data-points>0</span>
+      </div>
 
       <!-- Карточка гри -->
       <div class="home-hero">
         <h1 class="home-title">RPS</h1>
         <p class="home-subtitle" data-status>Зроби вибір 👇</p>
 
-        <div class="moves">
-          <div>Ти: <b data-user-move>—</b></div>
-          <div>Бот: <b data-bot-move>—</b></div>
+        <!-- Сітка раунду -->
+        <div class="round-grid">
+          <div class="row">
+            <span class="label">BOT</span>
+            <div class="circle" data-bot-0></div>
+            <div class="circle" data-bot-1></div>
+            <div class="circle" data-bot-2></div>
+            <div class="circle score" data-round-score>0</div>
+          </div>
+
+          <div class="row">
+            <span class="label">ТИ</span>
+            <div class="circle" data-user-0></div>
+            <div class="circle" data-user-1></div>
+            <div class="circle" data-user-2></div>
+          </div>
         </div>
 
+        <!-- Кнопки вибору -->
         <div class="rps-buttons">
           <button class="rps-btn" data-move="rock">Камінь</button>
           <button class="rps-btn" data-move="scissors">Ножиці</button>
           <button class="rps-btn" data-move="paper">Бумага</button>
         </div>
 
-        <button class="dx-btn dx-btn--primary" onclick="window.location.href='./index.html'">
+        <!-- Назад -->
+        <button
+          class="dx-btn dx-btn--primary"
+          onclick="window.location.href='./index.html'">
           Назад
         </button>
       </div>
     </main>
 
+    <!-- BOTTOM BAR -->
     <footer class="dx-bottombar">
       <div class="dx-bottombar__inner">
         <div class="dx-bottombar__label">Навігація</div>
       </div>
     </footer>
+
   </div>
 
+  <!-- JS -->
   <script src="/src/js/dreamx_core.js"></script>
   <script src="/src/js/api_client.js"></script>
   <script src="/src/js/game_screen.js"></script>
