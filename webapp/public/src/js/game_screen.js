@@ -20,9 +20,10 @@
   }
 
   function setRoundPointsUI(points) {
-    const el = document.querySelector("[data-round-points]");
+    const el = document.querySelector("[data-round-score]");
     if (el) el.textContent = String(points ?? 0);
   }
+
 
   function setStatusUI(text) {
     const el = document.querySelector("[data-status]");
@@ -38,12 +39,13 @@
   function setSlot(kind, idx, move) {
     const sel =
       kind === "user"
-        ? `[data-user-slot="${idx}"]`
-        : `[data-bot-slot="${idx}"]`;
+        ? `[data-user-${idx}]`
+        : `[data-bot-${idx}]`;
     const el = document.querySelector(sel);
     if (!el) return;
     el.textContent = move ? moveEmoji(move) : "";
   }
+
 
   function clearRoundSlots() {
     for (let i = 0; i < 3; i++) {
@@ -78,6 +80,9 @@
   async function onPlay(userMove) {
     if (!MOVES.includes(userMove)) return;
     if (step >= 3) return;
+
+    setStatusUI("CLICK ✅ " + userMove);
+
 
     try {
       setButtonsEnabled(false);
@@ -124,7 +129,8 @@
         }, 700);
       }
     } catch (e) {
-      setStatusUI("⚠️ Помилка. Спробуй ще раз.");
+      console.error("[onPlay error]", e);
+      setStatusUI("⚠️ " + (e?.message || String(e)));
     } finally {
       setButtonsEnabled(true);
     }
