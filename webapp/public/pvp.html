@@ -1,5 +1,3 @@
-<!-- pvp.html -->
-
 <!doctype html>
 <html lang="uk">
 <head>
@@ -10,115 +8,141 @@
   <link rel="stylesheet" href="/src/css/tokens.css" />
   <link rel="stylesheet" href="/src/css/layout.css" />
   <link rel="stylesheet" href="/src/css/pvp.css" />
-
 </head>
 
 <body class="dx theme-light">
-<div class="dx-app">
+  <div class="dx-app">
 
-  <!-- TOP BAR -->
-  <header class="dx-topbar">
-    <div class="dx-topbar__inner">
-      <div class="dx-brand">
-        <div class="dx-brand__logo">DX</div>
-        <div class="dx-brand__text">
-          <div class="dx-brand__title">PvP</div>
-          <div class="dx-brand__subtitle">1 vs 1</div>
+    <!-- TOP BAR -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <div class="dx-brand">
+          <div class="dx-brand__logo">DX</div>
+          <div class="dx-brand__text">
+            <div class="dx-brand__title">PvP</div>
+            <div class="dx-brand__subtitle">1 vs 1</div>
+          </div>
         </div>
+        <div class="dx-chip">Live</div>
       </div>
-      <div class="dx-chip">Live</div>
-    </div>
-  </header>
+    </header>
 
-  <!-- CONTENT -->
-  <main class="dx-content">
-    <section class="dx-game-card">
+    <!-- CONTENT -->
+    <main class="dx-content dx-game dx-pvp">
+      <section class="dx-game-card">
 
-      <h1 style="margin-top:0">Камінь • Ножиці • Папір</h1>
+        <!-- VS row (візуально як у Figma/бот-екрані) -->
+        <div class="dx-pvp-vs">
+          <div class="dx-pvp-side">
+            <div class="dx-avatar dx-avatar--sm"><span>ТИ</span></div>
+            <div class="dx-pvp-name" data-me-name>Ти</div>
+          </div>
 
-      <p id="pvp-status" class="dx-game-status">
-        Підключення до черги...
-      </p>
+          <div class="dx-pvp-vs__mid">VS</div>
 
-      <!-- Buttons -->
-      <div class="dx-rps-buttons">
-        <button class="dx-rps-btn" data-move="rock">🪨 Камінь</button>
-        <button class="dx-rps-btn" data-move="scissors">✂️ Ножиці</button>
-        <button class="dx-rps-btn" data-move="paper">📄 Бумага</button>
+          <div class="dx-pvp-side">
+            <div class="dx-avatar dx-avatar--sm"><span>OP</span></div>
+            <div class="dx-pvp-name" data-op-name>Суперник</div>
+          </div>
+        </div>
+
+        <!-- Counters row (як у bot game) -->
+        <div class="dx-counters-row">
+          <div class="dx-pill">
+            <span>Раунд</span>
+            <b><span data-round>1</span></b>
+          </div>
+          <div class="dx-pill">
+            <span>Рахунок</span>
+            <b><span data-score>0 : 0</span></b>
+          </div>
+        </div>
+
+        <h1 class="dx-game-title">RPS</h1>
+
+        <p id="pvp-status" class="dx-game-status">
+          Підключення до черги...
+        </p>
+
+        <!-- Board (як у bot game, але USER/OPP) -->
+        <div class="dx-round-board">
+          <div class="dx-round-row">
+            <div class="dx-round-label">OPP</div>
+            <div class="dx-dots">
+              <div class="dx-dot" data-bot-0></div>
+              <div class="dx-dot" data-bot-1></div>
+              <div class="dx-dot" data-bot-2></div>
+              <div class="dx-dot dx-dot--score" data-round-score>0</div>
+            </div>
+          </div>
+
+          <div class="dx-round-row">
+            <div class="dx-round-label">ТИ</div>
+            <div class="dx-dots">
+              <div class="dx-dot" data-user-0></div>
+              <div class="dx-dot" data-user-1></div>
+              <div class="dx-dot" data-user-2></div>
+              <div class="dx-dot dx-dot--score" data-user-round-score>0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="dx-rps-buttons">
+          <button class="dx-rps-btn" data-move="rock">🪨 Камінь</button>
+          <button class="dx-rps-btn" data-move="scissors">✂️ Ножиці</button>
+          <button class="dx-rps-btn" data-move="paper">📄 Бумага</button>
+        </div>
+
+        <button class="dx-btn dx-btn--primary dx-back"
+                onclick="window.location.href='./index.html'">
+          Назад
+        </button>
+
+      </section>
+    </main>
+
+    <!-- BOTTOM BAR -->
+    <footer class="dx-bottombar">
+      <div class="dx-bottombar__inner">
+        <div class="dx-bottombar__label">Created by Oleksandr Krychylskyi</div>
       </div>
+    </footer>
 
-      <button class="dx-btn dx-btn--primary"
-              style="margin-top:12px"
-              onclick="window.location.href='./index.html'">
-        Назад
-      </button>
+  </div>
 
-    </section>
-  </main>
+  <!-- JS -->
+  <script src="/src/js/dreamx_core.js"></script>
+  <script src="/src/js/api_client.js"></script>
+  <script src="/src/js/pvp_client.js"></script>
+  <script src="/src/js/pvp_screen.js"></script>
 
-  <!-- BOTTOM BAR -->
-  <footer class="dx-bottombar">
-    <div class="dx-bottombar__inner">
-      <div class="dx-bottombar__label">
-        Created by Oleksandr Krychylskyi
-      </div>
-    </div>
-  </footer>
+  <!-- Твій існуючий inline script НЕ чіпаю -->
+  <script>
+    const statusEl = document.getElementById("pvp-status");
 
-</div>
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
 
-<!-- JS -->
-<script src="/src/js/dreamx_core.js"></script>
-<script src="/src/js/api_client.js"></script>
-<script src="/src/js/pvp_client.js"></script>
-<script src="/src/js/pvp_screen.js"></script>
+    PvPScreen.events.onQueueJoined = () => setStatus("🔍 Пошук суперника...");
+    PvPScreen.events.onWaitingOpponent = () => setStatus("⏳ Очікуємо другого гравця...");
+    PvPScreen.events.onMatchStarted = () => setStatus("⚔️ Гра почалась! Зроби хід 👇");
+    PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
+    PvPScreen.events.onRoundResolved = () => setStatus("✅ Хід зараховано");
+    PvPScreen.events.onError = (err) => {
+      console.error(err);
+      setStatus("⚠️ Помилка PvP");
+    };
 
-<script>
-  const statusEl = document.getElementById("pvp-status");
-
-  function setStatus(text) {
-    statusEl.textContent = text;
-  }
-
-  // ===== HOOK EVENTS =====
-
-  PvPScreen.events.onQueueJoined = () => {
-    setStatus("🔍 Пошук суперника...");
-  };
-
-  PvPScreen.events.onWaitingOpponent = () => {
-    setStatus("⏳ Очікуємо другого гравця...");
-  };
-
-  PvPScreen.events.onMatchStarted = () => {
-    setStatus("⚔️ Гра почалась! Зроби хід 👇");
-  };
-
-  PvPScreen.events.onCanMove = () => {
-    setStatus("🎯 Твій хід");
-  };
-
-  PvPScreen.events.onRoundResolved = (res) => {
-    setStatus("✅ Хід зараховано");
-  };
-
-  PvPScreen.events.onError = (err) => {
-    console.error(err);
-    setStatus("⚠️ Помилка PvP");
-  };
-
-  // ===== BUTTONS =====
-
-  document.querySelectorAll("[data-move]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      PvPScreen.sendMove(btn.dataset.move);
-      setStatus("⏳ Очікуємо хід суперника...");
+    document.querySelectorAll("[data-move]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        PvPScreen.sendMove(btn.dataset.move);
+        setStatus("⏳ Очікуємо хід суперника...");
+      });
     });
-  });
 
-  // ===== START =====
-  PvPScreen.start();
-</script>
-
+    PvPScreen.start();
+  </script>
 </body>
 </html>
