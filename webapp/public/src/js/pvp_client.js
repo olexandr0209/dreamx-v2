@@ -10,33 +10,65 @@
   }
 
   async function apiGet(path) {
-    const r = await fetch(`${BASE}${path}`, { method: "GET" });
-    return await r.json();
+    try {
+      const r = await fetch(`${BASE}${path}`, { method: "GET" });
+      return await r.json();
+    } catch (e) {
+      return { ok: false, error: "network_error", details: String(e?.message || e) };
+    }
   }
 
   async function apiPost(path, body) {
-    const form = new URLSearchParams();
-    for (const [k, v] of Object.entries(body || {})) {
-      if (v === undefined || v === null) continue;
-      form.append(k, String(v));
+    try {
+      const form = new URLSearchParams();
+      for (const [k, v] of Object.entries(body || {})) {
+        if (v === undefined || v === null) continue;
+        form.append(k, String(v));
+      }
+
+      const r = await fetch(`${BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+        body: form.toString(),
+      });
+
+      return await r.json();
+    } catch (e) {
+      return { ok: false, error: "network_error", details: String(e?.message || e) };
     }
+  }
 
-    const r = await fetch(`${BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
-      body: form.toString(),
-    });
-
-    return await r.json();
+  function getTgUser() {
+    try {
+      return (
+        window.DreamX?.getUser?.() ||
+        window.Telegram?.WebApp?.initDataUnsafe?.user ||
+        null
+      );
+    } catch (e) {
+      return null;
+    }
   }
 
   async function ensureUser() {
-    // якщо api_client.js підключений — використовуємо його (найкраще)
+    // 1) якщо api_client.js підключений — використовуємо його (найкраще)
     if (window.Api?.ensure) {
       return await window.Api.ensure();
     }
-    // fallback (на всякий випадок): просто не блокуємо PvP
-    return { ok: true };
+
+    // 2) fallback: робимо upsert напряму
+    const tgId = getTgUserId();
+    if (!tgId) return { ok: false, error: "no_tg_user_id" };
+
+    const tg = getTgUser();
+    return apiPost("/players/upsert", {
+      tg_user_id: tgId,
+      username: tg?.username || null,
+      first_name: tg?.first_name || null,
+      last_name: tg?.last_name || null,
+      language_code: tg?.language_code || null,
+      photo_url: tg?.photo_url || null,
+    });
   }
 
   window.PvP = {
