@@ -6,6 +6,7 @@ bp_pvp = Blueprint("pvp", __name__, url_prefix="/pvp")
 
 MOVES = ("rock", "paper", "scissors")
 
+
 def _get_tg_user_id():
     tg = request.headers.get("X-Tg-User-Id") or request.args.get("tg_user_id")
     if not tg:
@@ -14,6 +15,7 @@ def _get_tg_user_id():
         return int(tg)
     except:
         return None
+
 
 def _decide(p1_move: str, p2_move: str) -> str:
     if p1_move == p2_move:
@@ -26,6 +28,7 @@ def _decide(p1_move: str, p2_move: str) -> str:
         return "p1"
     return "p2"
 
+
 def _points_for(result: str):
     # твої правила: win +3, draw +1/+1, lose +0
     if result == "draw":
@@ -33,6 +36,7 @@ def _points_for(result: str):
     if result == "p1":
         return (3, 0)
     return (0, 3)
+
 
 @bp_pvp.post("/queue/join")
 def join_queue():
@@ -99,12 +103,19 @@ def join_queue():
     finally:
         conn.close()
 
+
 @bp_pvp.get("/match/state")
 def match_state():
     tg_user_id = _get_tg_user_id()
     match_id = request.args.get("match_id")
     if not tg_user_id or not match_id:
         return jsonify({"ok": False, "error": "missing_params"}), 400
+
+    # ✅ FIX: match_id має бути int
+    try:
+        match_id = int(match_id)
+    except:
+        return jsonify({"ok": False, "error": "bad_match_id"}), 400
 
     conn = get_conn()
     try:
@@ -136,10 +147,12 @@ def match_state():
                     "ok": True,
                     "match": match,
                     "my_role": "p1" if me_id == match["player1_id"] else "p2",
-                    "can_move": (match["status"] == "playing" and my_move is None),
+                    # ✅ FIX: не можна ходити якщо ще нема суперника
+                    "can_move": (match["status"] == "playing" and match["player2_id"] is not None and my_move is None),
                 })
     finally:
         conn.close()
+
 
 @bp_pvp.post("/match/move")
 def match_move():
@@ -150,6 +163,13 @@ def match_move():
 
     if not tg_user_id or not match_id:
         return jsonify({"ok": False, "error": "missing_params"}), 400
+
+    # ✅ FIX: match_id має бути int
+    try:
+        match_id = int(match_id)
+    except:
+        return jsonify({"ok": False, "error": "bad_match_id"}), 400
+
     if move not in MOVES:
         return jsonify({"ok": False, "error": "bad_move"}), 400
 
@@ -178,12 +198,21 @@ def match_move():
                 rn = match["round_number"]
                 step = match["step_in_round"]
 
-                # вставляємо мій хід (якщо вже є — не дублюємо)
+                # ✅ FIX: якщо я вже ходив на цьому step — не приймаємо повторно
+                cur.execute("""
+                    SELECT 1
+                    FROM pvp_moves
+                    WHERE match_id=%s AND round_number=%s AND step_in_round=%s AND player_id=%s
+                    LIMIT 1
+                """, (match_id, rn, step, me_id))
+                already = cur.fetchone()
+                if already:
+                    return jsonify({"ok": True, "status": "already_moved", "match": match})
+
+                # вставляємо мій хід
                 cur.execute("""
                     INSERT INTO pvp_moves(match_id, round_number, step_in_round, player_id, move)
                     VALUES (%s,%s,%s,%s,%s)
-                    ON CONFLICT (match_id, round_number, step_in_round, player_id)
-                    DO NOTHING
                 """, (match_id, rn, step, me_id, move))
 
                 # дістаємо обидва ходи
@@ -230,7 +259,9 @@ def match_move():
                     "status": "resolved",
                     "p1_move": p1m,
                     "p2_move": p2m,
-                    "result": "draw" if result == "draw" else ("win" if result == ("p1" if me_id == match["player1_id"] else "p2") else "lose"),
+                    "result": "draw" if result == "draw" else (
+                        "win" if result == ("p1" if me_id == match["player1_id"] else "p2") else "lose"
+                    ),
                     "delta_me": add_p1 if me_id == match["player1_id"] else add_p2,
                     "match": new_match
                 })
