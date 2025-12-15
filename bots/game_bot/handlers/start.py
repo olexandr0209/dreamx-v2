@@ -7,11 +7,12 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, WebAppInfo
 import asyncio
 import requests
 import os
+from urllib.parse import urlencode
 
 router = Router()
 
 API_BASE = os.getenv("API_BASE_URL", "https://dreamx-v2.onrender.com").rstrip("/")
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://dreamx-v2-webapp.onrender.com")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://dreamx-v2-webapp.onrender.com").rstrip("/")
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")  # потрібен, щоб зібрати пряме посилання на фото
 
@@ -27,25 +28,20 @@ async def _get_last_profile_photo_url(message: Message) -> str | None:
     bot = message.bot
     user_id = message.from_user.id
 
-    # Telegram дає тільки фото через getUserProfilePhotos (відео-профіль тут не повертається)
     photos = await bot.get_user_profile_photos(user_id=user_id, limit=1, offset=0)
     if not photos or photos.total_count == 0:
         return None
 
-    # photos.photos: List[List[PhotoSize]]
-    # беремо "останню" фотку: тут limit=1, тому вона одна — але логіка збережена
     last_photo_sizes = photos.photos[0]
     if not last_photo_sizes:
         return None
 
-    # найбільший розмір — зазвичай останній елемент
     biggest = last_photo_sizes[-1]
     file = await bot.get_file(biggest.file_id)
 
     if not file or not file.file_path:
         return None
 
-    # пряме посилання (без скачування)
     return f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file.file_path}"
 
 
@@ -64,11 +60,10 @@ async def start_handler(message: Message):
     user = message.from_user
 
     # 1) пробуємо отримати photo_url (тільки URL)
-    photo_url = None
     try:
         photo_url = await _get_last_profile_photo_url(message)
     except Exception:
-        photo_url = None  # якщо щось зламалось — не валимо старт
+        photo_url = None
 
     payload = {
         "tg_user_id": user.id,
@@ -76,7 +71,7 @@ async def start_handler(message: Message):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "language_code": user.language_code,
-        "photo_url": photo_url,   # <- зберігаємо тільки посилання
+        "photo_url": photo_url,
     }
 
     # 2) upsert в бекенд
@@ -91,14 +86,17 @@ async def start_handler(message: Message):
         return
 
     if r.status_code != 200 or not data.get("ok"):
-        # покажемо хоча б код/помилку (коротко), щоб дебажити
         err = data.get("error") or f"HTTP {r.status_code}"
         await message.answer(f"⚠️ Помилка створення профілю: {err}")
         return
 
+    # ✅ ГОЛОВНЕ: передаємо tg_user_id у WebApp URL (fallback для фронту)
+    qs = urlencode({"tg_user_id": user.id})
+    webapp_url = f"{WEBAPP_URL}/?{qs}"
+
     kb = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🚀 Відкрити DreamX", web_app=WebAppInfo(url=WEBAPP_URL))]
+            [KeyboardButton(text="🚀 Відкрити DreamX", web_app=WebAppInfo(url=webapp_url))]
         ],
         resize_keyboard=True,
         one_time_keyboard=False,
