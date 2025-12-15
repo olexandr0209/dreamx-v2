@@ -1,3 +1,5 @@
+# backend/app/api/pvp.py
+
 from flask import Blueprint, request, jsonify
 from app.db.connection import get_conn
 from psycopg2.extras import RealDictCursor
@@ -13,7 +15,14 @@ def _get_tg_user_id():
         return None
     try:
         return int(tg)
-    except:
+    except Exception:
+        return None
+
+
+def _as_int(v):
+    try:
+        return int(v)
+    except Exception:
         return None
 
 
@@ -30,7 +39,7 @@ def _decide(p1_move: str, p2_move: str) -> str:
 
 
 def _points_for(result: str):
-    # твої правила: win +3, draw +1/+1, lose +0
+    # win +3, draw +1/+1, lose +0
     if result == "draw":
         return (1, 1)
     if result == "p1":
@@ -38,10 +47,40 @@ def _points_for(result: str):
     return (0, 3)
 
 
+def _match_round(match: dict) -> int:
+    # ✅ підтримка двох схем: round_number або current_round
+    if "round_number" in match and match["round_number"] is not None:
+        return int(match["round_number"])
+    if "current_round" in match and match["current_round"] is not None:
+        return int(match["current_round"])
+    return 1
+
+
+def _match_step(match: dict) -> int:
+    # ✅ підтримка двох схем: step_in_round або current_step
+    if "step_in_round" in match and match["step_in_round"] is not None:
+        return int(match["step_in_round"])
+    if "current_step" in match and match["current_step"] is not None:
+        return int(match["current_step"])
+    return 0
+
+
+def _update_match_round_step_sql(match: dict):
+    """
+    ✅ Повертає SQL-фрагмент для UPDATE правильних колонок
+    залежно від того, які колонки реально є у match (dict з SELECT *).
+    """
+    if "round_number" in match and "step_in_round" in match:
+        return ("round_number", "step_in_round")
+    if "current_round" in match and "current_step" in match:
+        return ("current_round", "current_step")
+    # fallback: якщо раптом ні те ні те (малоймовірно)
+    return ("round_number", "step_in_round")
+
+
 @bp_pvp.post("/queue/join")
 def join_queue():
-    print(">>> PVP JOIN QUEUE CALLED")  # ← ДОДАЙ ЦЕ
-    tg_user_id = _get_tg_user_id()  
+    tg_user_id = _get_tg_user_id()
     if not tg_user_id:
         return jsonify({"ok": False, "error": "missing_tg_user_id"}), 400
 
@@ -108,15 +147,9 @@ def join_queue():
 @bp_pvp.get("/match/state")
 def match_state():
     tg_user_id = _get_tg_user_id()
-    match_id = request.args.get("match_id")
+    match_id = _as_int(request.args.get("match_id"))
     if not tg_user_id or not match_id:
         return jsonify({"ok": False, "error": "missing_params"}), 400
-
-    # ✅ FIX: match_id має бути int
-    try:
-        match_id = int(match_id)
-    except:
-        return jsonify({"ok": False, "error": "bad_match_id"}), 400
 
     conn = get_conn()
     try:
@@ -136,20 +169,27 @@ def match_state():
                 if me_id not in (match["player1_id"], match["player2_id"]):
                     return jsonify({"ok": False, "error": "not_your_match"}), 403
 
+                rn = _match_round(match)
+                step = _match_step(match)
+
                 # чи я вже зробив хід на поточному кроці?
                 cur.execute("""
                     SELECT move FROM pvp_moves
                     WHERE match_id=%s AND round_number=%s AND step_in_round=%s AND player_id=%s
                     LIMIT 1
-                """, (match_id, match["round_number"], match["step_in_round"], me_id))
+                """, (match_id, rn, step, me_id))
                 my_move = cur.fetchone()
 
                 return jsonify({
                     "ok": True,
                     "match": match,
                     "my_role": "p1" if me_id == match["player1_id"] else "p2",
-                    # ✅ FIX: не можна ходити якщо ще нема суперника
-                    "can_move": (match["status"] == "playing" and match["player2_id"] is not None and my_move is None),
+                    # ✅ не можна ходити якщо ще нема суперника
+                    "can_move": (
+                        match["status"] == "playing"
+                        and match["player2_id"] is not None
+                        and my_move is None
+                    ),
                 })
     finally:
         conn.close()
@@ -158,19 +198,12 @@ def match_state():
 @bp_pvp.post("/match/move")
 def match_move():
     tg_user_id = _get_tg_user_id()
-    match_id = request.args.get("match_id")
+    match_id = _as_int(request.args.get("match_id"))
     data = request.get_json(silent=True) or request.form or {}
     move = data.get("move")
 
     if not tg_user_id or not match_id:
         return jsonify({"ok": False, "error": "missing_params"}), 400
-
-    # ✅ FIX: match_id має бути int
-    try:
-        match_id = int(match_id)
-    except:
-        return jsonify({"ok": False, "error": "bad_match_id"}), 400
-
     if move not in MOVES:
         return jsonify({"ok": False, "error": "bad_move"}), 400
 
@@ -196,24 +229,25 @@ def match_move():
                 if not match["player2_id"]:
                     return jsonify({"ok": False, "error": "no_opponent_yet"}), 400
 
-                rn = match["round_number"]
-                step = match["step_in_round"]
+                rn = _match_round(match)
+                step = _match_step(match)
 
-                # ✅ FIX: якщо я вже ходив на цьому step — не приймаємо повторно
+                # якщо я вже ходив на цьому step — не приймаємо повторно
                 cur.execute("""
                     SELECT 1
                     FROM pvp_moves
                     WHERE match_id=%s AND round_number=%s AND step_in_round=%s AND player_id=%s
                     LIMIT 1
                 """, (match_id, rn, step, me_id))
-                already = cur.fetchone()
-                if already:
+                if cur.fetchone():
                     return jsonify({"ok": True, "status": "already_moved", "match": match})
 
-                # вставляємо мій хід
+                # вставляємо мій хід (без дубля)
                 cur.execute("""
                     INSERT INTO pvp_moves(match_id, round_number, step_in_round, player_id, move)
                     VALUES (%s,%s,%s,%s,%s)
+                    ON CONFLICT (match_id, round_number, step_in_round, player_id)
+                    DO NOTHING
                 """, (match_id, rn, step, me_id, move))
 
                 # дістаємо обидва ходи
@@ -236,19 +270,21 @@ def match_move():
                 result = _decide(p1m, p2m)
                 add_p1, add_p2 = _points_for(result)
 
-                # апдейтимо рахунок + рухаємо step/round
+                # next step/round
                 next_step = step + 1
                 next_round = rn
                 if next_step >= 3:
                     next_step = 0
                     next_round = rn + 1
 
-                cur.execute("""
+                round_col, step_col = _update_match_round_step_sql(match)
+
+                cur.execute(f"""
                     UPDATE pvp_matches
                     SET score_p1 = score_p1 + %s,
                         score_p2 = score_p2 + %s,
-                        step_in_round = %s,
-                        round_number = %s,
+                        {step_col} = %s,
+                        {round_col} = %s,
                         updated_at = NOW()
                     WHERE id = %s
                     RETURNING *
