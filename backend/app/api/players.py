@@ -44,9 +44,10 @@ def me():
 
 @bp_players.post("/upsert")
 def upsert():
-    body = request.get_json(silent=True) or {}
+    body = request.get_json(silent=True) or request.form or {}
 
-    tg_user_id = body.get("tg_user_id")
+    # ✅ підтримуємо і body, і header/query (як у me та games)
+    tg_user_id = body.get("tg_user_id") or _get_tg_user_id()
     if tg_user_id is None:
         return jsonify({"ok": False, "error": "missing tg_user_id"}), 400
 
