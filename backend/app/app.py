@@ -10,6 +10,8 @@ from .routes_users import bp_users
 from .api.players import bp_players
 from .api.games import bp_games
 
+from .api.pvp import bp_pvp
+
 
 def create_app():
     app = Flask(__name__)
@@ -23,6 +25,8 @@ def create_app():
 
     app.register_blueprint(bp_players)
     app.register_blueprint(bp_games)
+
+    app.register_blueprint(bp_pvp)
 
     @app.errorhandler(Exception)
     def handle_error(e):
