@@ -114,8 +114,13 @@
       return;
     }
 
-    // ✅ не шлемо запит, якщо зараз не твій хід
-    if (!canMoveNow) return;
+    // ✅ FIX (мінімальний): не мовчимо, якщо зараз не твій хід
+    if (!canMoveNow) {
+      Events.onError({ ok: false, error: "not_your_turn" });
+      // підтягуємо актуальний стан, щоб UI не “завис”
+      pollState();
+      return;
+    }
 
     // ✅ одразу блокуємо повторні кліки до наступного pollState
     canMoveNow = false;
