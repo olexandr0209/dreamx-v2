@@ -273,6 +273,13 @@ async def confirm_create(c: CallbackQuery, state: FSMContext):
     max_participants = int(data.get("max_participants", 64))
     chat_enabled = bool(data.get("chat_enabled", False))
 
+    # ✅ NEW: гарантуємо join_code для будь-якого турніру (і public теж)
+    if not join_code:
+        code = _gen_join_code()
+        while fetch_one("SELECT 1 FROM tournaments WHERE join_code=%s", (code,)):
+            code = _gen_join_code()
+        join_code = code
+
     # створюємо турнір
     execute(
         """
@@ -361,15 +368,24 @@ async def tournament_link(c: CallbackQuery):
         await c.answer("not found", show_alert=True)
         return
 
+    # ✅ NEW: якщо раптом у старого турніру пустий join_code — згенерувати та зберегти
+    join_code = row.get("join_code")
+    if not join_code:
+        code = _gen_join_code()
+        while fetch_one("SELECT 1 FROM tournaments WHERE join_code=%s", (code,)):
+            code = _gen_join_code()
+        execute("UPDATE tournaments SET join_code=%s, updated_at=NOW() WHERE id=%s", (code, tid))
+        join_code = code
+
     if WEBAPP_URL:
-        # універсальний формат, ти потім підхопиш на фронті
-        link = f"{WEBAPP_URL}?tournament_id={tid}"
+        # ✅ NEW: тепер лінк не по id, а по tagid=join_code
+        link = f"{WEBAPP_URL}?tagid={join_code}"
     else:
         link = "(WEBAPP_URL не заданий у ENV)"
 
     extra = ""
     if row["access_type"] == "private":
-        extra = f"\n🔒 Код: {row['join_code']}"
+        extra = f"\n🔒 Код: {join_code}"
 
     await c.message.edit_text(
         f"🔗 Посилання для гравців:\n{link}{extra}\n\n(Гравці відкривають WebApp і приєднуються до турніру.)",
