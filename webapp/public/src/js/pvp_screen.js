@@ -1,4 +1,5 @@
 // webapp/public/src/js/pvp_screen.js
+
 (function () {
   if (!window.PvP) {
     console.error("[PvP] PvP client not loaded");
@@ -11,6 +12,9 @@
   let pollTimer = null;
 
   let lastStatus = null; // щоб не спамити onMatchStarted
+
+  // ✅ NEW: чи зараз можна робити хід (сервер каже res.can_move)
+  let canMoveNow = false;
 
   const Events = {
     onQueueJoined: (match) => {},
@@ -32,6 +36,9 @@
     matchId = res.match.id;
     lastStatus = res.match.status || null;
 
+    // ✅ NEW: на старті точно не знаємо, чи можна ходити
+    canMoveNow = false;
+
     Events.onQueueJoined(res.match);
     startPolling();
   }
@@ -51,6 +58,7 @@
     // waiting
     if (match.status === "waiting") {
       lastStatus = "waiting";
+      canMoveNow = false; // ✅ NEW
       Events.onWaitingOpponent(match);
       return;
     }
@@ -62,7 +70,10 @@
         lastStatus = "playing";
       }
 
-      if (res.can_move) {
+      // ✅ NEW: єдине джерело правди — res.can_move
+      canMoveNow = !!res.can_move;
+
+      if (canMoveNow) {
         Events.onCanMove(res);
       }
 
@@ -71,6 +82,7 @@
 
     // інші стани (на майбутнє)
     lastStatus = match.status;
+    canMoveNow = false; // ✅ NEW
   }
 
   async function sendMove(move) {
@@ -78,6 +90,14 @@
       Events.onError({ ok: false, error: "no_match" });
       return;
     }
+
+    // ✅ NEW: не шлемо запит, якщо зараз не твій хід
+    if (!canMoveNow) {
+      return;
+    }
+
+    // ✅ NEW: одразу блокуємо повторні кліки до наступного pollState
+    canMoveNow = false;
 
     const res = await window.PvP.sendMove(matchId, move);
     if (!res.ok) {
