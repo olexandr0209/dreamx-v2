@@ -66,7 +66,7 @@
           Підключення до черги...
         </p>
 
-        <!-- ✅ NEW: FINISH SCREEN (Winner / Defeated / Draw + Menu) -->
+        <!-- ✅ FINISH SCREEN (Winner / Defeated / Draw + Menu) -->
         <div id="pvp-finish" style="display:none; text-align:center; padding: 18px 0 6px;">
           <h2 id="pvp-finish-title" style="margin:0 0 14px 0;">Winner</h2>
 
@@ -76,7 +76,7 @@
           </button>
         </div>
 
-        <!-- Board (як у bot game, але USER/OPP) -->
+        <!-- Board -->
         <div class="dx-round-board">
           <div class="dx-round-row">
             <div class="dx-round-label">OPP</div>
@@ -131,6 +131,8 @@
   <script src="/src/js/pvp_screen.js?v=16"></script>
 
   <script>
+    const MAX_ROUNDS = 5;
+
     const statusEl = document.getElementById("pvp-status");
 
     const finishEl = document.getElementById("pvp-finish");
@@ -138,7 +140,11 @@
     const buttonsEl = document.getElementById("pvp-buttons");
     const backEl = document.getElementById("pvp-back");
 
+    const roundEl = document.querySelector("[data-round]");
+    const scoreEl = document.querySelector("[data-score]");
+
     let myUserId = null;
+    let myRole = null; // 'p1' | 'p2'
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -159,17 +165,26 @@
       lockMoves();
     }
 
-    // ✅ NEW: дізнаємось internal user_id (users.id), щоб правильно показати Winner/Defeated
-    (async function preloadMe() {
+    // ✅ NEW: оновлення UI з state (раунд/рахунок + my_user_id/my_role)
+    PvPScreen.events.onStateUpdate = (res) => {
       try {
-        const me = await window.Api?.me?.();
-        if (me?.ok && me?.user?.id) {
-          myUserId = Number(me.user.id);
-        }
-      } catch (e) {
-        // нічого страшного, просто не зможемо відрізнити Winner/Defeated (тільки Draw)
-      }
-    })();
+        if (res?.my_user_id) myUserId = Number(res.my_user_id);
+        if (res?.my_role) myRole = String(res.my_role);
+
+        const m = res?.match || {};
+        const rn = Number(m.round_number ?? m.current_round ?? 1);
+        if (roundEl) roundEl.textContent = `${rn}/${MAX_ROUNDS}`;
+
+        const s1 = Number(m.score_p1 ?? 0);
+        const s2 = Number(m.score_p2 ?? 0);
+
+        // показуємо "мій : суперника"
+        const myScore = (myRole === "p2") ? s2 : s1;
+        const opScore = (myRole === "p2") ? s1 : s2;
+
+        if (scoreEl) scoreEl.textContent = `${myScore} : ${opScore}`;
+      } catch (e) {}
+    };
 
     PvPScreen.events.onQueueJoined = () => setStatus("🔍 Пошук суперника...");
     PvPScreen.events.onWaitingOpponent = () => setStatus("⏳ Очікуємо другого гравця...");
@@ -177,9 +192,8 @@
     PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
     PvPScreen.events.onRoundResolved = () => setStatus("✅ Хід зараховано");
 
-    // ✅ NEW: фінал
+    // ✅ фінал
     PvPScreen.events.onMatchFinished = (match) => {
-      // match.winner_id: null => Draw
       const winnerId = match?.winner_id ?? null;
 
       if (!winnerId) {
@@ -187,7 +201,7 @@
         return;
       }
 
-      // якщо ми не знаємо myUserId — показуємо просто Winner (краще ніж помилитись)
+      // якщо ми ще не встигли отримати myUserId — краще не помилитись
       if (!myUserId) {
         showFinish("Winner");
         return;
@@ -204,10 +218,10 @@
       setStatus(`⚠️ PvP: ${code}${details}`);
     };
 
+    // ✅ мінімальна правка: не ставимо статус тут (бо sendMove може відмовити якщо не твій хід)
     document.querySelectorAll("[data-move]").forEach(btn => {
       btn.addEventListener("click", () => {
         PvPScreen.sendMove(btn.dataset.move);
-        setStatus("⏳ Очікуємо хід суперника...");
       });
     });
 
