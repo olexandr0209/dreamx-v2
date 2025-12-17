@@ -173,6 +173,15 @@
       document.querySelectorAll("[data-move]").forEach(b => (b.disabled = true));
     }
 
+    // ✅ NEW: unlock + один контролер
+    function unlockMoves() {
+      document.querySelectorAll("[data-move]").forEach(b => (b.disabled = false));
+    }
+    function setMovesEnabled(flag) {
+      if (flag) unlockMoves();
+      else lockMoves();
+    }
+
     function showFinish(title) {
       finishTitleEl.textContent = title;
       finishEl.style.display = "block";
@@ -297,16 +306,23 @@
 
         if (scoreEl) scoreEl.textContent = `${myScore} : ${opScore}`;
       } catch (e) {}
+
+      // ✅ FIX (проблема 4): синхрон кнопок з can_move (єдине джерело правди)
+      setMovesEnabled(!!res?.can_move);
     };
 
-    PvPScreen.events.onQueueJoined = () => setStatus("🔍 Пошук суперника...");
-    PvPScreen.events.onWaitingOpponent = () => setStatus("⏳ Очікуємо другого гравця...");
-    PvPScreen.events.onMatchStarted = () => setStatus("⚔️ Гра почалась! Зроби хід 👇");
-    PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
+    // ✅ FIX: стани матчмейкінгу/очікування — кнопки OFF
+    PvPScreen.events.onQueueJoined = () => { setMovesEnabled(false); setStatus("🔍 Пошук суперника..."); };
+    PvPScreen.events.onWaitingOpponent = () => { setMovesEnabled(false); setStatus("⏳ Очікуємо другого гравця..."); };
+    PvPScreen.events.onMatchStarted = () => { setMovesEnabled(false); setStatus("⚔️ Гра почалась! Зроби хід 👇"); };
+
+    // ✅ FIX: тільки коли твій хід — кнопки ON
+    PvPScreen.events.onCanMove = () => { setMovesEnabled(true); setStatus("🎯 Твій хід"); };
 
     // ✅ NEW: тепер реально малюємо кружечки/бали за раунд
     PvPScreen.events.onRoundResolved = (res) => {
       renderResolved(res);
+      setMovesEnabled(false); // ✅ після ходу — відразу OFF до наступного can_move
       setStatus("✅ Хід зараховано");
     };
 
@@ -333,15 +349,21 @@
 
       const code = err?.error || err?.code || "unknown";
       const details = err?.details ? ` (${String(err.details).slice(0, 120)})` : "";
+      setMovesEnabled(false);
       setStatus(`⚠️ PvP: ${code}${details}`);
     };
 
-    // ✅ мінімальна правка: не ставимо статус тут (бо sendMove може відмовити якщо не твій хід)
+    // ✅ FIX: клік → одразу OFF + статус "відправлено", щоб не було подвійних кліків і "тиша"
     document.querySelectorAll("[data-move]").forEach(btn => {
       btn.addEventListener("click", () => {
+        setMovesEnabled(false);
+        setStatus("⏳ Хід відправлено...");
         PvPScreen.sendMove(btn.dataset.move);
       });
     });
+
+    // ✅ стартово блокуємо, доки сервер не скаже can_move=true
+    setMovesEnabled(false);
 
     PvPScreen.start();
   </script>
