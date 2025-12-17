@@ -11,7 +11,7 @@
   let matchId = null;
   let pollTimer = null;
 
-  let lastStatus = null; // щоб не спамити onMatchStarted
+  let lastStatus = null; // щоб не спамити onMatchStarted / onMatchFinished
 
   // ✅ NEW: чи зараз можна робити хід (сервер каже res.can_move)
   let canMoveNow = false;
@@ -20,6 +20,7 @@
     onQueueJoined: (match) => {},
     onWaitingOpponent: (match) => {},
     onMatchStarted: (match) => {},
+    onMatchFinished: (match) => {}, // ✅ NEW
     onStateUpdate: (state) => {},
     onCanMove: (state) => {},
     onRoundResolved: (result) => {},
@@ -54,6 +55,17 @@
 
     const match = res.match;
     Events.onStateUpdate(res);
+
+    // ✅ NEW: finished
+    if (match.status === "finished") {
+      canMoveNow = false;
+      if (lastStatus !== "finished") {
+        lastStatus = "finished";
+        stopPolling();
+        Events.onMatchFinished(match); // ✅ тільки 1 раз
+      }
+      return;
+    }
 
     // waiting
     if (match.status === "waiting") {
@@ -107,6 +119,14 @@
 
     if (res.status === "resolved") {
       Events.onRoundResolved(res); // ✅ тільки коли є реальний resolved payload
+
+      // ✅ NEW: якщо сервер сказав що матч завершився — фінішуємо одразу
+      if (res.game_over && res.match) {
+        lastStatus = "finished";
+        stopPolling();
+        Events.onMatchFinished(res.match);
+        return;
+      }
     }
 
     // ✅ швидше оновлюємо стан
