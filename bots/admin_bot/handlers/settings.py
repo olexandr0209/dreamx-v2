@@ -46,7 +46,8 @@ def set_setting(key: str, value: str):
 def settings_snapshot():
     enabled = get_setting("giveaways_enabled", "true").lower() == "true"
     maxp = int(get_setting("giveaway_max_participants", "64"))
-    return enabled, maxp
+    chat_enabled = get_setting("chat_enabled", "false").lower() == "true"
+    return enabled, maxp, chat_enabled
 
 class SettingsStates(StatesGroup):
     waiting_max = State()
@@ -79,8 +80,11 @@ async def settings_menu(c: CallbackQuery):
     if not is_admin(c.from_user.id):
         await c.answer("No access", show_alert=True)
         return
-    enabled, maxp = settings_snapshot()
-    await c.message.edit_text("⚙️ Settings:", reply_markup=kb_settings_menu(enabled, maxp))
+    enabled, maxp, chat_enabled = settings_snapshot()
+    await c.message.edit_text(
+        "⚙️ Settings:",
+        reply_markup=kb_settings_menu(enabled, maxp, chat_enabled)
+    )
     await c.answer()
 
 @router.callback_query(F.data == "settings:toggle_giveaways")
@@ -88,10 +92,21 @@ async def toggle_giveaways(c: CallbackQuery):
     if not is_admin(c.from_user.id):
         await c.answer("No access", show_alert=True)
         return
-    enabled, maxp = settings_snapshot()
+    enabled, maxp, chat_enabled = settings_snapshot()
     set_setting("giveaways_enabled", "false" if enabled else "true")
-    enabled2, maxp2 = settings_snapshot()
-    await c.message.edit_reply_markup(reply_markup=kb_settings_menu(enabled2, maxp2))
+    enabled2, maxp2, chat2 = settings_snapshot()
+    await c.message.edit_reply_markup(reply_markup=kb_settings_menu(enabled2, maxp2, chat2))
+    await c.answer("Збережено ✅")
+
+@router.callback_query(F.data == "settings:toggle_chat")
+async def toggle_chat(c: CallbackQuery):
+    if not is_admin(c.from_user.id):
+        await c.answer("No access", show_alert=True)
+        return
+    enabled, maxp, chat_enabled = settings_snapshot()
+    set_setting("chat_enabled", "false" if chat_enabled else "true")
+    enabled2, maxp2, chat2 = settings_snapshot()
+    await c.message.edit_reply_markup(reply_markup=kb_settings_menu(enabled2, maxp2, chat2))
     await c.answer("Збережено ✅")
 
 @router.callback_query(F.data == "settings:set_max")
@@ -117,11 +132,14 @@ async def set_max_done(m: Message, state: FSMContext):
         if n < 1 or n > 100000:
             raise ValueError()
     except:
-        await m.answer("❌ Це не число або занадто дивне значення. Спробуй ще раз або ❌ Скасувати.", reply_markup=kb_cancel())
+        await m.answer(
+            "❌ Це не число або занадто дивне значення. Спробуй ще раз або ❌ Скасувати.",
+            reply_markup=kb_cancel(),
+        )
         return
 
     set_setting("giveaway_max_participants", str(n))
     await state.clear()
-    enabled, maxp = settings_snapshot()
-    await m.answer("✅ Збережено.", reply_markup=kb_settings_menu(enabled, maxp))
 
+    enabled, maxp, chat_enabled = settings_snapshot()
+    await m.answer("✅ Збережено.", reply_markup=kb_settings_menu(enabled, maxp, chat_enabled))
