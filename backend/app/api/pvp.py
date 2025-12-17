@@ -107,7 +107,6 @@ def _last_resolved_payload(cur, match: dict, me_id: int):
 
     step_col = _moves_step_col(cur)
 
-    # знайти останній (round, step) де є 2 ходи
     cur.execute(f"""
         SELECT round_number, {step_col} AS step
         FROM pvp_moves
@@ -139,7 +138,6 @@ def _last_resolved_payload(cur, match: dict, me_id: int):
 
     r = _decide(p1m, p2m)  # draw | p1 | p2
 
-    # result відносно мене (як очікує твій renderResolved)
     if r == "draw":
         rel = "draw"
     else:
@@ -149,7 +147,7 @@ def _last_resolved_payload(cur, match: dict, me_id: int):
     return {
         "ok": True,
         "status": "resolved",
-        "key": f"{rr}-{ss}",          # ✅ для дедуплікації на фронті
+        "key": f"{rr}-{ss}",
         "p1_move": p1m,
         "p2_move": p2m,
         "result": rel,
@@ -260,6 +258,38 @@ def match_state():
                 # ✅ NEW: останній resolved для домальовки UI
                 last_resolved = _last_resolved_payload(cur, match, me_id)
 
+                # ✅ NEW (мінімально): дані гравців для аватарів/нікнеймів
+                players = {"p1": None, "p2": None}
+                p1_id = match.get("player1_id")
+                p2_id = match.get("player2_id")
+
+                ids = [i for i in [p1_id, p2_id] if i]
+                if ids:
+                    cur.execute("""
+                        SELECT id, username, first_name, photo_url
+                        FROM users
+                        WHERE id = ANY(%s)
+                    """, (ids,))
+                    rows = cur.fetchall() or []
+                    by_id = {r["id"]: r for r in rows}
+
+                    if p1_id and p1_id in by_id:
+                        r = by_id[p1_id]
+                        players["p1"] = {
+                            "id": r["id"],
+                            "username": r.get("username"),
+                            "first_name": r.get("first_name"),
+                            "photo_url": r.get("photo_url"),
+                        }
+                    if p2_id and p2_id in by_id:
+                        r = by_id[p2_id]
+                        players["p2"] = {
+                            "id": r["id"],
+                            "username": r.get("username"),
+                            "first_name": r.get("first_name"),
+                            "photo_url": r.get("photo_url"),
+                        }
+
                 return jsonify({
                     "ok": True,
                     "match": match,
@@ -270,7 +300,8 @@ def match_state():
                         and match["player2_id"] is not None
                         and my_move is None
                     ),
-                    "last_resolved": last_resolved,  # ✅ NEW
+                    "last_resolved": last_resolved,
+                    "players": players,  # ✅ NEW
                 })
     finally:
         conn.close()
@@ -410,7 +441,7 @@ def match_move():
                 return jsonify({
                     "ok": True,
                     "status": "resolved",
-                    "key": f"{rn}-{step}",  # ✅ NEW: щоб фронт не домальовував двічі
+                    "key": f"{rn}-{step}",  # ✅ щоб фронт не домальовував двічі
                     "game_over": (new_match.get("status") == "finished"),
                     "p1_move": p1m,
                     "p2_move": p2m,
