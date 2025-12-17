@@ -8,7 +8,6 @@ bp_pvp = Blueprint("pvp", __name__, url_prefix="/pvp")
 
 MOVES = ("rock", "paper", "scissors")
 
-# ✅ NEW: фіксована довжина матчу
 MAX_ROUNDS = 5  # 5 раундів * 3 ходи = 15 ходів
 
 
@@ -42,7 +41,6 @@ def _decide(p1_move: str, p2_move: str) -> str:
 
 
 def _points_for(result: str):
-    # win +3, draw +1/+1, lose +0
     if result == "draw":
         return (1, 1)
     if result == "p1":
@@ -51,7 +49,6 @@ def _points_for(result: str):
 
 
 def _match_round(match: dict) -> int:
-    # ✅ підтримка двох схем: round_number або current_round
     if "round_number" in match and match["round_number"] is not None:
         return int(match["round_number"])
     if "current_round" in match and match["current_round"] is not None:
@@ -60,7 +57,6 @@ def _match_round(match: dict) -> int:
 
 
 def _match_step(match: dict) -> int:
-    # ✅ підтримка двох схем: step_in_round або current_step
     if "step_in_round" in match and match["step_in_round"] is not None:
         return int(match["step_in_round"])
     if "current_step" in match and match["current_step"] is not None:
@@ -69,19 +65,13 @@ def _match_step(match: dict) -> int:
 
 
 def _update_match_round_step_sql(match: dict):
-    """
-    ✅ Повертає SQL-фрагмент для UPDATE правильних колонок
-    залежно від того, які колонки реально є у match (dict з SELECT *).
-    """
     if "round_number" in match and "step_in_round" in match:
         return ("round_number", "step_in_round")
     if "current_round" in match and "current_step" in match:
         return ("current_round", "current_step")
-    # fallback
     return ("round_number", "step_in_round")
 
 
-# ✅ кеш колонок pvp_moves (щоб не бити information_schema кожен раз)
 _PVP_MOVES_COLS = None
 
 
@@ -101,14 +91,71 @@ def _get_pvp_moves_cols(cur):
 
 
 def _moves_step_col(cur) -> str:
-    """
-    ✅ В pvp_moves може бути або step_in_round (нова схема), або step (стара).
-    Повертає назву колонки, яку треба використовувати в WHERE.
-    """
     cols = _get_pvp_moves_cols(cur)
     if "step_in_round" in cols:
         return "step_in_round"
     return "step"
+
+
+def _last_resolved_payload(cur, match: dict, me_id: int):
+    """
+    ✅ Повертає останній "закритий" крок (де є 2 ходи) як payload,
+    щоб фронт міг домалювати кружечки через polling.
+    """
+    if not match.get("player1_id") or not match.get("player2_id"):
+        return None
+
+    step_col = _moves_step_col(cur)
+
+    # знайти останній (round, step) де є 2 ходи
+    cur.execute(f"""
+        SELECT round_number, {step_col} AS step
+        FROM pvp_moves
+        WHERE match_id=%s
+        GROUP BY round_number, {step_col}
+        HAVING COUNT(*) >= 2
+        ORDER BY round_number DESC, step DESC
+        LIMIT 1
+    """, (match["id"],))
+    last = cur.fetchone()
+    if not last:
+        return None
+
+    rr = int(last["round_number"])
+    ss = int(last["step"])
+
+    cur.execute(f"""
+        SELECT player_id, move
+        FROM pvp_moves
+        WHERE match_id=%s AND round_number=%s AND {step_col}=%s
+    """, (match["id"], rr, ss))
+    rows = cur.fetchall()
+    moves = {r["player_id"]: r["move"] for r in rows}
+
+    p1m = moves.get(match["player1_id"])
+    p2m = moves.get(match["player2_id"])
+    if not p1m or not p2m:
+        return None
+
+    r = _decide(p1m, p2m)  # draw | p1 | p2
+
+    # result відносно мене (як очікує твій renderResolved)
+    if r == "draw":
+        rel = "draw"
+    else:
+        i_am_p1 = (me_id == match["player1_id"])
+        rel = "win" if (r == ("p1" if i_am_p1 else "p2")) else "lose"
+
+    return {
+        "ok": True,
+        "status": "resolved",
+        "key": f"{rr}-{ss}",          # ✅ для дедуплікації на фронті
+        "p1_move": p1m,
+        "p2_move": p2m,
+        "result": rel,
+        "game_over": (match.get("status") == "finished"),
+        "match": match,
+    }
 
 
 @bp_pvp.post("/queue/join")
@@ -121,14 +168,12 @@ def join_queue():
     try:
         with conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
-                # 1) знаходимо юзера
                 cur.execute("SELECT id FROM users WHERE tg_user_id=%s", (tg_user_id,))
                 me = cur.fetchone()
                 if not me:
                     return jsonify({"ok": False, "error": "user_not_found"}), 404
                 me_id = me["id"]
 
-                # 2) якщо я вже в матчі waiting/playing — повертаємо його
                 cur.execute("""
                     SELECT * FROM pvp_matches
                     WHERE status IN ('waiting','playing')
@@ -141,7 +186,6 @@ def join_queue():
                 if existing:
                     return jsonify({"ok": True, "match": existing})
 
-                # 3) пробуємо підхопити waiting матч (атомарно)
                 cur.execute("""
                     SELECT * FROM pvp_matches
                     WHERE status='waiting'
@@ -165,7 +209,6 @@ def join_queue():
                     match = cur.fetchone()
                     return jsonify({"ok": True, "match": match})
 
-                # 4) інакше створюємо новий waiting матч
                 cur.execute("""
                     INSERT INTO pvp_matches(player1_id, status)
                     VALUES (%s, 'waiting')
@@ -205,10 +248,8 @@ def match_state():
                 rn = _match_round(match)
                 step = _match_step(match)
 
-                # ✅ step column compatibility (step_in_round або step)
                 step_col = _moves_step_col(cur)
 
-                # чи я вже зробив хід на поточному кроці?
                 cur.execute(f"""
                     SELECT move FROM pvp_moves
                     WHERE match_id=%s AND round_number=%s AND {step_col}=%s AND player_id=%s
@@ -216,16 +257,20 @@ def match_state():
                 """, (match_id, rn, step, me_id))
                 my_move = cur.fetchone()
 
+                # ✅ NEW: останній resolved для домальовки UI
+                last_resolved = _last_resolved_payload(cur, match, me_id)
+
                 return jsonify({
                     "ok": True,
                     "match": match,
                     "my_role": "p1" if me_id == match["player1_id"] else "p2",
-                    "my_user_id": me_id,  # ✅ NEW: щоб фронт точно знав Winner/Defeated
+                    "my_user_id": me_id,
                     "can_move": (
                         match["status"] == "playing"
                         and match["player2_id"] is not None
                         and my_move is None
                     ),
+                    "last_resolved": last_resolved,  # ✅ NEW
                 })
     finally:
         conn.close()
@@ -253,7 +298,6 @@ def match_move():
                     return jsonify({"ok": False, "error": "user_not_found"}), 404
                 me_id = me["id"]
 
-                # Лочимо матч
                 cur.execute("SELECT * FROM pvp_matches WHERE id=%s FOR UPDATE", (match_id,))
                 match = cur.fetchone()
                 if not match:
@@ -272,10 +316,8 @@ def match_move():
                 has_step_in_round = ("step_in_round" in cols)
                 has_step = ("step" in cols)
 
-                # ✅ для SELECT/WHERE (step_in_round або step)
                 step_col = "step_in_round" if has_step_in_round else "step"
 
-                # якщо я вже ходив на цьому step — не приймаємо повторно
                 cur.execute(f"""
                     SELECT 1
                     FROM pvp_moves
@@ -285,7 +327,6 @@ def match_move():
                 if cur.fetchone():
                     return jsonify({"ok": True, "status": "already_moved", "match": match})
 
-                # ✅ INSERT: підтримка 3 варіантів схеми pvp_moves
                 if has_step_in_round and has_step:
                     cur.execute("""
                         INSERT INTO pvp_moves(match_id, round_number, step_in_round, step, player_id, move)
@@ -307,7 +348,6 @@ def match_move():
                 else:
                     return jsonify({"ok": False, "error": "pvp_moves_schema_invalid"}), 500
 
-                # дістаємо обидва ходи
                 cur.execute(f"""
                     SELECT player_id, move
                     FROM pvp_moves
@@ -315,11 +355,9 @@ def match_move():
                 """, (match_id, rn, step))
                 rows = cur.fetchall()
 
-                # якщо ще не двоє — просто повертаємо стан
                 if len(rows) < 2:
                     return jsonify({"ok": True, "status": "waiting_other", "match": match})
 
-                # визначаємо p1/p2 ходи
                 moves = {r["player_id"]: r["move"] for r in rows}
                 p1m = moves.get(match["player1_id"])
                 p2m = moves.get(match["player2_id"])
@@ -327,7 +365,6 @@ def match_move():
                 result = _decide(p1m, p2m)
                 add_p1, add_p2 = _points_for(result)
 
-                # next step/round
                 next_step = step + 1
                 next_round = rn
                 if next_step >= 3:
@@ -336,10 +373,8 @@ def match_move():
 
                 round_col, step_match_col = _update_match_round_step_sql(match)
 
-                # ✅ NEW: фініш після 5-го раунду на 3-му кроці (step==2)
                 is_last_step = (rn == MAX_ROUNDS and step == 2)
 
-                # рахуємо фінальні очки, щоб визначити winner_id
                 cur_score_p1 = int(match.get("score_p1") or 0)
                 cur_score_p2 = int(match.get("score_p2") or 0)
                 final_score_p1 = cur_score_p1 + add_p1
@@ -352,7 +387,7 @@ def match_move():
                     elif final_score_p2 > final_score_p1:
                         winner_id = match["player2_id"]
                     else:
-                        winner_id = None  # draw
+                        winner_id = None
 
                 new_status = "finished" if is_last_step else "playing"
                 upd_step = step if is_last_step else next_step
@@ -375,7 +410,8 @@ def match_move():
                 return jsonify({
                     "ok": True,
                     "status": "resolved",
-                    "game_over": (new_match.get("status") == "finished"),  # ✅ NEW
+                    "key": f"{rn}-{step}",  # ✅ NEW: щоб фронт не домальовував двічі
+                    "game_over": (new_match.get("status") == "finished"),
                     "p1_move": p1m,
                     "p2_move": p2m,
                     "result": "draw" if result == "draw" else (
