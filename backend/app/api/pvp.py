@@ -100,6 +100,17 @@ def _get_pvp_moves_cols(cur):
     return cols
 
 
+def _moves_step_col(cur) -> str:
+    """
+    ✅ В pvp_moves може бути або step_in_round (нова схема), або step (стара).
+    Повертає назву колонки, яку треба використовувати в WHERE.
+    """
+    cols = _get_pvp_moves_cols(cur)
+    if "step_in_round" in cols:
+        return "step_in_round"
+    return "step"
+
+
 @bp_pvp.post("/queue/join")
 def join_queue():
     tg_user_id = _get_tg_user_id()
@@ -194,10 +205,13 @@ def match_state():
                 rn = _match_round(match)
                 step = _match_step(match)
 
+                # ✅ step column compatibility (step_in_round або step)
+                step_col = _moves_step_col(cur)
+
                 # чи я вже зробив хід на поточному кроці?
-                cur.execute("""
+                cur.execute(f"""
                     SELECT move FROM pvp_moves
-                    WHERE match_id=%s AND round_number=%s AND step_in_round=%s AND player_id=%s
+                    WHERE match_id=%s AND round_number=%s AND {step_col}=%s AND player_id=%s
                     LIMIT 1
                 """, (match_id, rn, step, me_id))
                 my_move = cur.fetchone()
@@ -254,40 +268,50 @@ def match_move():
                 rn = _match_round(match)
                 step = _match_step(match)
 
+                cols = _get_pvp_moves_cols(cur)
+                has_step_in_round = ("step_in_round" in cols)
+                has_step = ("step" in cols)
+
+                # ✅ для SELECT/WHERE (step_in_round або step)
+                step_col = "step_in_round" if has_step_in_round else "step"
+
                 # якщо я вже ходив на цьому step — не приймаємо повторно
-                cur.execute("""
+                cur.execute(f"""
                     SELECT 1
                     FROM pvp_moves
-                    WHERE match_id=%s AND round_number=%s AND step_in_round=%s AND player_id=%s
+                    WHERE match_id=%s AND round_number=%s AND {step_col}=%s AND player_id=%s
                     LIMIT 1
                 """, (match_id, rn, step, me_id))
                 if cur.fetchone():
                     return jsonify({"ok": True, "status": "already_moved", "match": match})
 
-                # якщо в pvp_moves є NOT NULL колонка step — заповнюємо її також
-                cols = _get_pvp_moves_cols(cur)
-                has_step_col = ("step" in cols)
-
-                if has_step_col:
+                # ✅ INSERT: підтримка 3 варіантів схеми pvp_moves
+                if has_step_in_round and has_step:
                     cur.execute("""
                         INSERT INTO pvp_moves(match_id, round_number, step_in_round, step, player_id, move)
                         VALUES (%s,%s,%s,%s,%s,%s)
-                        ON CONFLICT (match_id, round_number, step_in_round, player_id)
-                        DO NOTHING
+                        ON CONFLICT DO NOTHING
                     """, (match_id, rn, step, step, me_id, move))
-                else:
+                elif has_step_in_round:
                     cur.execute("""
                         INSERT INTO pvp_moves(match_id, round_number, step_in_round, player_id, move)
                         VALUES (%s,%s,%s,%s,%s)
-                        ON CONFLICT (match_id, round_number, step_in_round, player_id)
-                        DO NOTHING
+                        ON CONFLICT DO NOTHING
                     """, (match_id, rn, step, me_id, move))
+                elif has_step:
+                    cur.execute("""
+                        INSERT INTO pvp_moves(match_id, round_number, step, player_id, move)
+                        VALUES (%s,%s,%s,%s,%s)
+                        ON CONFLICT DO NOTHING
+                    """, (match_id, rn, step, me_id, move))
+                else:
+                    return jsonify({"ok": False, "error": "pvp_moves_schema_invalid"}), 500
 
                 # дістаємо обидва ходи
-                cur.execute("""
+                cur.execute(f"""
                     SELECT player_id, move
                     FROM pvp_moves
-                    WHERE match_id=%s AND round_number=%s AND step_in_round=%s
+                    WHERE match_id=%s AND round_number=%s AND {step_col}=%s
                 """, (match_id, rn, step))
                 rows = cur.fetchall()
 
@@ -303,14 +327,14 @@ def match_move():
                 result = _decide(p1m, p2m)
                 add_p1, add_p2 = _points_for(result)
 
-                # next step/round (твоя логіка як була)
+                # next step/round
                 next_step = step + 1
                 next_round = rn
                 if next_step >= 3:
                     next_step = 0
                     next_round = rn + 1
 
-                round_col, step_col = _update_match_round_step_sql(match)
+                round_col, step_match_col = _update_match_round_step_sql(match)
 
                 # ✅ NEW: фініш після 5-го раунду на 3-му кроці (step==2)
                 is_last_step = (rn == MAX_ROUNDS and step == 2)
@@ -338,7 +362,7 @@ def match_move():
                     UPDATE pvp_matches
                     SET score_p1 = COALESCE(score_p1, 0) + %s,
                         score_p2 = COALESCE(score_p2, 0) + %s,
-                        {step_col} = %s,
+                        {step_match_col} = %s,
                         {round_col} = %s,
                         status = %s,
                         winner_id = %s,
