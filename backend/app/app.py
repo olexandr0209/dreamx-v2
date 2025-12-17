@@ -12,6 +12,8 @@ from .api.games import bp_games
 
 from .api.pvp import bp_pvp
 
+from .api.tournament_groups import bp_tg
+
 
 def create_app():
     app = Flask(__name__)
@@ -27,6 +29,8 @@ def create_app():
     app.register_blueprint(bp_games)
 
     app.register_blueprint(bp_pvp)
+
+    app.register_blueprint(bp_tg)
 
     @app.errorhandler(Exception)
     def handle_error(e):
