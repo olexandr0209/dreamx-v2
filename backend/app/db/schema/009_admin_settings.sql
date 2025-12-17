@@ -15,5 +15,6 @@ CREATE TABLE IF NOT EXISTS app_settings (
 INSERT INTO app_settings(key, value)
 VALUES
   ('giveaways_enabled', 'true'),
-  ('giveaway_max_participants', '64')
+  ('giveaway_max_participants', '64'),
+  ('chat_enabled', 'false')
 ON CONFLICT (key) DO NOTHING;
