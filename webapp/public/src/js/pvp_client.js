@@ -89,22 +89,30 @@
       );
     },
 
+    // ✅ FIX: теж гарантуємо, що юзер існує (інакше може бути user_not_found)
     getMatchState: async (matchId) => {
       const tgId = getTgUserId();
       if (!tgId || !matchId) {
         return { ok: false, error: "missing_params" };
       }
 
+      const ensured = await ensureUser();
+      if (ensured && ensured.ok === false) return ensured;
+
       return apiGet(
         `/pvp/match/state?tg_user_id=${encodeURIComponent(tgId)}&match_id=${encodeURIComponent(matchId)}`
       );
     },
 
+    // ✅ FIX: те саме для ходу
     sendMove: async (matchId, move) => {
       const tgId = getTgUserId();
       if (!tgId || !matchId) {
         return { ok: false, error: "missing_params" };
       }
+
+      const ensured = await ensureUser();
+      if (ensured && ensured.ok === false) return ensured;
 
       return apiPost(
         `/pvp/match/move?tg_user_id=${encodeURIComponent(tgId)}&match_id=${encodeURIComponent(matchId)}`,
