@@ -130,39 +130,46 @@
 /* VS row */
 .dx-pvp .dx-pvp-vs{
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:space-between;
   gap: 12px;
   margin: 6px 0 10px;
 }
 
+/* ✅ CHANGED: side vertical, name under avatar */
 .dx-pvp .dx-pvp-side{
   display:flex;
+  flex-direction: column;
   align-items:center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
+  flex: 1 1 0;
 }
 
+/* ✅ CHANGED: name under avatar */
 .dx-pvp .dx-pvp-name{
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 140px;
+  max-width: 160px;
+  text-align: center;
 }
 
 .dx-pvp .dx-pvp-vs__mid{
   font-weight: 900;
   letter-spacing: 1px;
   opacity: .6;
+  margin-top: 14px;
+  flex: 0 0 auto;
 }
 
-/* маленький avatar */
+/* ✅ CHANGED: bigger avatar + image support */
 .dx-pvp .dx-avatar.dx-avatar--sm{
-  width: 44px;
-  height: 44px;
+  width: clamp(56px, 14vw, 74px);
+  height: clamp(56px, 14vw, 74px);
   border-radius: 999px;
   overflow: hidden;
   background: rgba(0,0,0,.06);
@@ -170,6 +177,13 @@
   display:grid;
   place-items:center;
   flex: 0 0 auto;
+}
+
+.dx-pvp .dx-avatar.dx-avatar--sm img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display:block;
 }
 
 .dx-pvp .dx-avatar.dx-avatar--sm span{
@@ -292,5 +306,5 @@
   .dx-pvp .dx-game-title{ font-size: 22px; }
   .dx-pvp .dx-counters-row{ flex-direction: column; }
   .dx-pvp .dx-rps-buttons{ flex-direction: column; }
-  .dx-pvp .dx-pvp-name{ max-width: 110px; }
+  .dx-pvp .dx-pvp-name{ max-width: 140px; }
 }
