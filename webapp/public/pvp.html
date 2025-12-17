@@ -131,9 +131,13 @@
     PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
     PvPScreen.events.onRoundResolved = () => setStatus("✅ Хід зараховано");
     PvPScreen.events.onError = (err) => {
-      console.error(err);
-      setStatus("⚠️ Помилка PvP");
-    };
+    console.error("[PvP ERROR]", err);
+  
+    const code = err?.error || err?.code || "unknown";
+    const details = err?.details ? ` (${String(err.details).slice(0, 120)})` : "";
+    setStatus(`⚠️ PvP: ${code}${details}`);
+  };
+
 
     document.querySelectorAll("[data-move]").forEach(btn => {
       btn.addEventListener("click", () => {
