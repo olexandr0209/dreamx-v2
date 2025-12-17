@@ -12,7 +12,6 @@
   let pollTimer = null;
 
   let lastStatus = null;
-
   let canMoveNow = false;
 
   // ✅ NEW: щоб не домальовувати один і той самий resolved багато разів
@@ -40,8 +39,6 @@
     lastStatus = res.match.status || null;
 
     canMoveNow = false;
-
-    // ✅ NEW
     lastResolvedKey = null;
 
     Events.onQueueJoined(res.match);
@@ -104,11 +101,7 @@
       }
 
       canMoveNow = !!res.can_move;
-
-      if (canMoveNow) {
-        Events.onCanMove(res);
-      }
-
+      if (canMoveNow) Events.onCanMove(res);
       return;
     }
 
