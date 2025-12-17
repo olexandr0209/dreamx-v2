@@ -143,8 +143,27 @@
     const roundEl = document.querySelector("[data-round]");
     const scoreEl = document.querySelector("[data-score]");
 
+    // ✅ NEW: елементи дошки (кружечки + “бали за раунд”)
+    const meDots = [
+      document.querySelector("[data-user-0]"),
+      document.querySelector("[data-user-1]"),
+      document.querySelector("[data-user-2]"),
+    ];
+    const opDots = [
+      document.querySelector("[data-bot-0]"),
+      document.querySelector("[data-bot-1]"),
+      document.querySelector("[data-bot-2]"),
+    ];
+    const opRoundScoreEl = document.querySelector("[data-round-score]");
+    const meRoundScoreEl = document.querySelector("[data-user-round-score]");
+
     let myUserId = null;
     let myRole = null; // 'p1' | 'p2'
+
+    // ✅ NEW: локальний стан раунду (для очищення кружечків при переході)
+    let curRoundShown = 1;
+    let roundPointsMe = 0;
+    let roundPointsOp = 0;
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -165,6 +184,93 @@
       lockMoves();
     }
 
+    // ✅ NEW: helpers для UI дошки
+    function moveEmoji(m) {
+      if (m === "rock") return "🪨";
+      if (m === "scissors") return "✂️";
+      if (m === "paper") return "📄";
+      return "";
+    }
+
+    function clearRoundUI() {
+      for (const d of [...meDots, ...opDots]) {
+        if (d) d.textContent = "";
+      }
+      roundPointsMe = 0;
+      roundPointsOp = 0;
+      if (meRoundScoreEl) meRoundScoreEl.textContent = "0";
+      if (opRoundScoreEl) opRoundScoreEl.textContent = "0";
+    }
+
+    function applyRoundPoints(relativeResult) {
+      // relativeResult: "win" | "lose" | "draw" (відносно МЕНЕ)
+      if (relativeResult === "draw") {
+        roundPointsMe += 1;
+        roundPointsOp += 1;
+      } else if (relativeResult === "win") {
+        roundPointsMe += 3;
+      } else if (relativeResult === "lose") {
+        roundPointsOp += 3;
+      }
+      if (meRoundScoreEl) meRoundScoreEl.textContent = String(roundPointsMe);
+      if (opRoundScoreEl) opRoundScoreEl.textContent = String(roundPointsOp);
+    }
+
+    function getMatchRound(m) {
+      return Number(m?.round_number ?? m?.current_round ?? 1);
+    }
+
+    function getMatchStep(m) {
+      return Number(m?.step_in_round ?? m?.current_step ?? 0);
+    }
+
+    function computePlayedRoundStep(updatedMatch, gameOver) {
+      // Після resolved сервер зазвичай вже просунувся на next step/round.
+      // Тому відкотимо на 1 крок, щоб знати, який кружечок заповнювати.
+      const rnNow = getMatchRound(updatedMatch);
+      const stNow = getMatchStep(updatedMatch);
+
+      if (gameOver) {
+        // якщо гра завершена — сервер залишає step/round як останній
+        return { rr: rnNow, ss: stNow };
+      }
+
+      if (stNow === 0) {
+        // значить був step=2 попереднього раунду
+        return { rr: rnNow - 1, ss: 2 };
+      }
+      return { rr: rnNow, ss: stNow - 1 };
+    }
+
+    function renderResolved(res) {
+      if (!res || !res.match) return;
+
+      const m = res.match;
+
+      // якщо ми перейшли в новий раунд — чистимо UI раунду
+      const rn = getMatchRound(m);
+      if (rn !== curRoundShown) {
+        curRoundShown = rn;
+        clearRoundUI();
+      }
+
+      const played = computePlayedRoundStep(m, !!res.game_over);
+      const ss = played.ss;
+
+      // розкладемо ходи на "мій" / "суперника"
+      let myMove = res.p1_move;
+      let opMove = res.p2_move;
+      if (myRole === "p2") {
+        myMove = res.p2_move;
+        opMove = res.p1_move;
+      }
+
+      if (meDots[ss]) meDots[ss].textContent = moveEmoji(myMove);
+      if (opDots[ss]) opDots[ss].textContent = moveEmoji(opMove);
+
+      applyRoundPoints(res.result);
+    }
+
     // ✅ NEW: оновлення UI з state (раунд/рахунок + my_user_id/my_role)
     PvPScreen.events.onStateUpdate = (res) => {
       try {
@@ -172,7 +278,14 @@
         if (res?.my_role) myRole = String(res.my_role);
 
         const m = res?.match || {};
-        const rn = Number(m.round_number ?? m.current_round ?? 1);
+        const rn = getMatchRound(m);
+
+        // якщо раунд змінився — чистимо (щоб не тягнуло попередній)
+        if (rn !== curRoundShown) {
+          curRoundShown = rn;
+          clearRoundUI();
+        }
+
         if (roundEl) roundEl.textContent = `${rn}/${MAX_ROUNDS}`;
 
         const s1 = Number(m.score_p1 ?? 0);
@@ -190,7 +303,12 @@
     PvPScreen.events.onWaitingOpponent = () => setStatus("⏳ Очікуємо другого гравця...");
     PvPScreen.events.onMatchStarted = () => setStatus("⚔️ Гра почалась! Зроби хід 👇");
     PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
-    PvPScreen.events.onRoundResolved = () => setStatus("✅ Хід зараховано");
+
+    // ✅ NEW: тепер реально малюємо кружечки/бали за раунд
+    PvPScreen.events.onRoundResolved = (res) => {
+      renderResolved(res);
+      setStatus("✅ Хід зараховано");
+    };
 
     // ✅ фінал
     PvPScreen.events.onMatchFinished = (match) => {
