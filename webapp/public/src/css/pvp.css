@@ -1,120 +1,3 @@
-/* =========================
-   DreamX • PvP
-   ========================= */
-
-.dx-pvp-card {
-  max-width: 520px;
-  margin: 0 auto;
-  background: var(--surface);
-  border: 1px solid var(--stroke);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-1);
-  padding: 16px;
-}
-
-/* ---------- Status ---------- */
-
-.dx-pvp-status {
-  text-align: center;
-  font-size: 14px;
-  color: var(--muted);
-  margin: 6px 0 14px;
-}
-
-/* ---------- Players ---------- */
-
-.dx-pvp-players {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.dx-pvp-player {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dx-pvp-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  overflow: hidden;
-  background: rgba(0,0,0,0.08);
-  border: 1px solid rgba(0,0,0,0.12);
-}
-
-.dx-pvp-avatar img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.dx-pvp-name {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-/* ---------- VS ---------- */
-
-.dx-pvp-vs {
-  font-weight: 900;
-  font-size: 14px;
-  opacity: 0.5;
-}
-
-/* ---------- Buttons ---------- */
-
-.dx-pvp-buttons {
-  display: flex;
-  gap: 10px;
-  margin: 14px 0 10px;
-}
-
-.dx-pvp-btn {
-  flex: 1;
-  min-height: 46px;
-  border-radius: 14px;
-  border: 1px solid var(--stroke);
-  background: var(--surface);
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-}
-
-.dx-pvp-btn:active {
-  transform: translateY(1px);
-}
-
-.dx-pvp-btn[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* ---------- Result ---------- */
-
-.dx-pvp-result {
-  text-align: center;
-  font-size: 15px;
-  font-weight: 800;
-  margin-top: 10px;
-}
-
-/* ---------- Mobile (iPhone 8) ---------- */
-
-@media (max-width: 360px) {
-  .dx-pvp-buttons {
-    flex-direction: column;
-  }
-
-  .dx-pvp-btn {
-    min-height: 44px;
-    font-size: 13px;
-  }
-}
-
 /* pvp.css — стилі тільки для PvP, щоб не зачепити game.css */
 
 .dx-pvp .dx-game-card{
@@ -130,46 +13,45 @@
 /* VS row */
 .dx-pvp .dx-pvp-vs{
   display:flex;
-  align-items:flex-start;
+  align-items:center;
   justify-content:space-between;
   gap: 12px;
-  margin: 6px 0 10px;
+  margin: 6px 0 12px;
 }
 
-/* ✅ CHANGED: side vertical, name under avatar */
+/* ✅ було: рядок, стало: колонка (аватар зверху, нік знизу) */
 .dx-pvp .dx-pvp-side{
   display:flex;
   flex-direction: column;
   align-items:center;
   gap: 8px;
   min-width: 0;
-  flex: 1 1 0;
+  flex: 1;
 }
 
-/* ✅ CHANGED: name under avatar */
+/* ✅ нік під аватаром */
 .dx-pvp .dx-pvp-name{
   font-size: 13px;
   font-weight: 800;
   color: var(--text);
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 160px;
-  text-align: center;
 }
 
 .dx-pvp .dx-pvp-vs__mid{
   font-weight: 900;
   letter-spacing: 1px;
   opacity: .6;
-  margin-top: 14px;
   flex: 0 0 auto;
 }
 
-/* ✅ CHANGED: bigger avatar + image support */
+/* ✅ аватар більший */
 .dx-pvp .dx-avatar.dx-avatar--sm{
-  width: clamp(56px, 14vw, 74px);
-  height: clamp(56px, 14vw, 74px);
+  width: 64px;
+  height: 64px;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(0,0,0,.06);
@@ -306,5 +188,10 @@
   .dx-pvp .dx-game-title{ font-size: 22px; }
   .dx-pvp .dx-counters-row{ flex-direction: column; }
   .dx-pvp .dx-rps-buttons{ flex-direction: column; }
-  .dx-pvp .dx-pvp-name{ max-width: 140px; }
+
+  /* ✅ щоб нік не рвав верстку */
+  .dx-pvp .dx-pvp-name{ max-width: 120px; }
+
+  /* ✅ трохи менше аватар */
+  .dx-pvp .dx-avatar.dx-avatar--sm{ width: 56px; height: 56px; }
 }
