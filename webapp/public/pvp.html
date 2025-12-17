@@ -36,14 +36,20 @@
         <!-- VS row (візуально як у Figma/бот-екрані) -->
         <div class="dx-pvp-vs">
           <div class="dx-pvp-side">
-            <div class="dx-avatar dx-avatar--sm"><span>ТИ</span></div>
+            <div class="dx-avatar dx-avatar--sm">
+              <img data-me-photo alt="me" style="display:none;" />
+              <span data-me-fallback>ТИ</span>
+            </div>
             <div class="dx-pvp-name" data-me-name>Ти</div>
           </div>
 
           <div class="dx-pvp-vs__mid">VS</div>
 
           <div class="dx-pvp-side">
-            <div class="dx-avatar dx-avatar--sm"><span>OP</span></div>
+            <div class="dx-avatar dx-avatar--sm">
+              <img data-op-photo alt="opponent" style="display:none;" />
+              <span data-op-fallback>OP</span>
+            </div>
             <div class="dx-pvp-name" data-op-name>Суперник</div>
           </div>
         </div>
@@ -143,6 +149,14 @@
     const roundEl = document.querySelector("[data-round]");
     const scoreEl = document.querySelector("[data-score]");
 
+    // ✅ NEW: refs for names/photos
+    const meNameEl = document.querySelector("[data-me-name]");
+    const opNameEl = document.querySelector("[data-op-name]");
+    const meImg = document.querySelector("[data-me-photo]");
+    const opImg = document.querySelector("[data-op-photo]");
+    const meFallback = document.querySelector("[data-me-fallback]");
+    const opFallback = document.querySelector("[data-op-fallback]");
+
     // ✅ NEW: елементи дошки (кружечки + “бали за раунд”)
     const meDots = [
       document.querySelector("[data-user-0]"),
@@ -160,7 +174,7 @@
     let myUserId = null;
     let myRole = null; // 'p1' | 'p2'
 
-    // ✅ NEW: локальний стан раунду (для очищення кружечків при переході)
+    // ✅ локальний стан раунду
     let curRoundShown = 1;
     let roundPointsMe = 0;
     let roundPointsOp = 0;
@@ -173,7 +187,6 @@
       document.querySelectorAll("[data-move]").forEach(b => (b.disabled = true));
     }
 
-    // ✅ NEW: unlock + один контролер
     function unlockMoves() {
       document.querySelectorAll("[data-move]").forEach(b => (b.disabled = false));
     }
@@ -186,14 +199,12 @@
       finishTitleEl.textContent = title;
       finishEl.style.display = "block";
 
-      // ховаємо ігрові контроли
       if (buttonsEl) buttonsEl.style.display = "none";
       if (backEl) backEl.style.display = "none";
 
       lockMoves();
     }
 
-    // ✅ NEW: helpers для UI дошки
     function moveEmoji(m) {
       if (m === "rock") return "🪨";
       if (m === "scissors") return "✂️";
@@ -212,7 +223,6 @@
     }
 
     function applyRoundPoints(relativeResult) {
-      // relativeResult: "win" | "lose" | "draw" (відносно МЕНЕ)
       if (relativeResult === "draw") {
         roundPointsMe += 1;
         roundPointsOp += 1;
@@ -229,44 +239,38 @@
       return Number(m?.round_number ?? m?.current_round ?? 1);
     }
 
-    function getMatchStep(m) {
-      return Number(m?.step_in_round ?? m?.current_step ?? 0);
-    }
-
-    function computePlayedRoundStep(updatedMatch, gameOver) {
-      // Після resolved сервер зазвичай вже просунувся на next step/round.
-      // Тому відкотимо на 1 крок, щоб знати, який кружечок заповнювати.
-      const rnNow = getMatchRound(updatedMatch);
-      const stNow = getMatchStep(updatedMatch);
-
-      if (gameOver) {
-        // якщо гра завершена — сервер залишає step/round як останній
-        return { rr: rnNow, ss: stNow };
-      }
-
-      if (stNow === 0) {
-        // значить був step=2 попереднього раунду
-        return { rr: rnNow - 1, ss: 2 };
-      }
-      return { rr: rnNow, ss: stNow - 1 };
+    function computePlayedFromKey(keyStr) {
+      // key: "round-step" (наприклад "1-0")
+      const s = String(keyStr || "");
+      if (!s.includes("-")) return null;
+      const [a, b] = s.split("-");
+      const rr = Number(a);
+      const ss = Number(b);
+      if (!Number.isFinite(rr) || !Number.isFinite(ss)) return null;
+      return { rr, ss };
     }
 
     function renderResolved(res) {
       if (!res || !res.match) return;
 
-      const m = res.match;
+      // ✅ НАДІЙНО: беремо крок з res.key, щоб не було “залипання”
+      const played = computePlayedFromKey(res.key);
+      if (!played) return;
 
-      // якщо ми перейшли в новий раунд — чистимо UI раунду
-      const rn = getMatchRound(m);
-      if (rn !== curRoundShown) {
-        curRoundShown = rn;
+      const rr = played.rr;
+      const ss = played.ss;
+
+      // ✅ якщо новий раунд — чистимо
+      if (rr !== curRoundShown) {
+        curRoundShown = rr;
         clearRoundUI();
       }
 
-      const played = computePlayedRoundStep(m, !!res.game_over);
-      const ss = played.ss;
+      // ✅ якщо це перший хід раунду — теж чистимо (на випадок розсинхрону UI)
+      if (ss === 0) {
+        clearRoundUI();
+      }
 
-      // розкладемо ходи на "мій" / "суперника"
       let myMove = res.p1_move;
       let opMove = res.p2_move;
       if (myRole === "p2") {
@@ -280,16 +284,43 @@
       applyRoundPoints(res.result);
     }
 
-    // ✅ NEW: оновлення UI з state (раунд/рахунок + my_user_id/my_role)
+    function setAvatar(imgEl, fallbackEl, url) {
+      if (!imgEl || !fallbackEl) return;
+      if (url) {
+        imgEl.src = url;
+        imgEl.style.display = "block";
+        fallbackEl.style.display = "none";
+      } else {
+        imgEl.style.display = "none";
+        fallbackEl.style.display = "block";
+      }
+    }
+
+    // ✅ NEW: onStateUpdate (names/photos + score/round)
     PvPScreen.events.onStateUpdate = (res) => {
       try {
         if (res?.my_user_id) myUserId = Number(res.my_user_id);
         if (res?.my_role) myRole = String(res.my_role);
 
+        // ✅ players info from backend
+        const players = res?.players || null;
+        if (players && myRole) {
+          const meP = (myRole === "p2") ? players.p2 : players.p1;
+          const opP = (myRole === "p2") ? players.p1 : players.p2;
+
+          const meLabel = (meP?.username) ? `@${meP.username}` : "Ти";
+          const opLabel = (opP?.username) ? `@${opP.username}` : "Суперник";
+
+          if (meNameEl) meNameEl.textContent = meLabel;
+          if (opNameEl) opNameEl.textContent = opLabel;
+
+          setAvatar(meImg, meFallback, meP?.photo_url || null);
+          setAvatar(opImg, opFallback, opP?.photo_url || null);
+        }
+
         const m = res?.match || {};
         const rn = getMatchRound(m);
 
-        // якщо раунд змінився — чистимо (щоб не тягнуло попередній)
         if (rn !== curRoundShown) {
           curRoundShown = rn;
           clearRoundUI();
@@ -300,33 +331,26 @@
         const s1 = Number(m.score_p1 ?? 0);
         const s2 = Number(m.score_p2 ?? 0);
 
-        // показуємо "мій : суперника"
         const myScore = (myRole === "p2") ? s2 : s1;
         const opScore = (myRole === "p2") ? s1 : s2;
 
         if (scoreEl) scoreEl.textContent = `${myScore} : ${opScore}`;
       } catch (e) {}
 
-      // ✅ FIX (проблема 4): синхрон кнопок з can_move (єдине джерело правди)
       setMovesEnabled(!!res?.can_move);
     };
 
-    // ✅ FIX: стани матчмейкінгу/очікування — кнопки OFF
     PvPScreen.events.onQueueJoined = () => { setMovesEnabled(false); setStatus("🔍 Пошук суперника..."); };
     PvPScreen.events.onWaitingOpponent = () => { setMovesEnabled(false); setStatus("⏳ Очікуємо другого гравця..."); };
     PvPScreen.events.onMatchStarted = () => { setMovesEnabled(false); setStatus("⚔️ Гра почалась! Зроби хід 👇"); };
-
-    // ✅ FIX: тільки коли твій хід — кнопки ON
     PvPScreen.events.onCanMove = () => { setMovesEnabled(true); setStatus("🎯 Твій хід"); };
 
-    // ✅ NEW: тепер реально малюємо кружечки/бали за раунд
     PvPScreen.events.onRoundResolved = (res) => {
       renderResolved(res);
-      setMovesEnabled(false); // ✅ після ходу — відразу OFF до наступного can_move
+      setMovesEnabled(false);
       setStatus("✅ Хід зараховано");
     };
 
-    // ✅ фінал
     PvPScreen.events.onMatchFinished = (match) => {
       const winnerId = match?.winner_id ?? null;
 
@@ -335,7 +359,6 @@
         return;
       }
 
-      // якщо ми ще не встигли отримати myUserId — краще не помилитись
       if (!myUserId) {
         showFinish("Winner");
         return;
@@ -353,7 +376,6 @@
       setStatus(`⚠️ PvP: ${code}${details}`);
     };
 
-    // ✅ FIX: клік → одразу OFF + статус "відправлено", щоб не було подвійних кліків і "тиша"
     document.querySelectorAll("[data-move]").forEach(btn => {
       btn.addEventListener("click", () => {
         setMovesEnabled(false);
@@ -362,9 +384,7 @@
       });
     });
 
-    // ✅ стартово блокуємо, доки сервер не скаже can_move=true
     setMovesEnabled(false);
-
     PvPScreen.start();
   </script>
 
