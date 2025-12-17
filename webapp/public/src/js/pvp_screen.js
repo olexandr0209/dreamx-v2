@@ -11,16 +11,16 @@
   let matchId = null;
   let pollTimer = null;
 
-  let lastStatus = null; // щоб не спамити onMatchStarted / onMatchFinished
+  let lastStatus = null; // щоб не спамити onMatchStarted / onMatchFinished / onWaitingOpponent
 
-  // ✅ NEW: чи зараз можна робити хід (сервер каже res.can_move)
+  // ✅ чи зараз можна робити хід (сервер каже res.can_move)
   let canMoveNow = false;
 
   const Events = {
     onQueueJoined: (match) => {},
     onWaitingOpponent: (match) => {},
     onMatchStarted: (match) => {},
-    onMatchFinished: (match) => {}, // ✅ NEW
+    onMatchFinished: (match) => {},
     onStateUpdate: (state) => {},
     onCanMove: (state) => {},
     onRoundResolved: (result) => {},
@@ -37,7 +37,7 @@
     matchId = res.match.id;
     lastStatus = res.match.status || null;
 
-    // ✅ NEW: на старті точно не знаємо, чи можна ходити
+    // ✅ на старті точно не знаємо, чи можна ходити
     canMoveNow = false;
 
     Events.onQueueJoined(res.match);
@@ -54,11 +54,19 @@
     }
 
     const match = res.match;
+
+    // ✅ NEW: броня від битого payload
+    if (!match || !match.status) {
+      Events.onError({ ok: false, error: "bad_state_payload" });
+      return;
+    }
+
     Events.onStateUpdate(res);
 
-    // ✅ NEW: finished
+    // ✅ finished
     if (match.status === "finished") {
       canMoveNow = false;
+
       if (lastStatus !== "finished") {
         lastStatus = "finished";
         stopPolling();
@@ -67,11 +75,14 @@
       return;
     }
 
-    // waiting
+    // ✅ waiting (не спамимо кожен poll)
     if (match.status === "waiting") {
-      lastStatus = "waiting";
-      canMoveNow = false; // ✅ NEW
-      Events.onWaitingOpponent(match);
+      canMoveNow = false;
+
+      if (lastStatus !== "waiting") {
+        lastStatus = "waiting";
+        Events.onWaitingOpponent(match);
+      }
       return;
     }
 
@@ -82,7 +93,7 @@
         lastStatus = "playing";
       }
 
-      // ✅ NEW: єдине джерело правди — res.can_move
+      // ✅ єдине джерело правди — res.can_move
       canMoveNow = !!res.can_move;
 
       if (canMoveNow) {
@@ -94,7 +105,7 @@
 
     // інші стани (на майбутнє)
     lastStatus = match.status;
-    canMoveNow = false; // ✅ NEW
+    canMoveNow = false;
   }
 
   async function sendMove(move) {
@@ -103,12 +114,10 @@
       return;
     }
 
-    // ✅ NEW: не шлемо запит, якщо зараз не твій хід
-    if (!canMoveNow) {
-      return;
-    }
+    // ✅ не шлемо запит, якщо зараз не твій хід
+    if (!canMoveNow) return;
 
-    // ✅ NEW: одразу блокуємо повторні кліки до наступного pollState
+    // ✅ одразу блокуємо повторні кліки до наступного pollState
     canMoveNow = false;
 
     const res = await window.PvP.sendMove(matchId, move);
@@ -120,7 +129,7 @@
     if (res.status === "resolved") {
       Events.onRoundResolved(res); // ✅ тільки коли є реальний resolved payload
 
-      // ✅ NEW: якщо сервер сказав що матч завершився — фінішуємо одразу
+      // ✅ якщо сервер сказав що матч завершився — фінішуємо одразу
       if (res.game_over && res.match) {
         lastStatus = "finished";
         stopPolling();
