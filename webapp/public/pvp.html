@@ -66,6 +66,16 @@
           Підключення до черги...
         </p>
 
+        <!-- ✅ NEW: FINISH SCREEN (Winner / Defeated / Draw + Menu) -->
+        <div id="pvp-finish" style="display:none; text-align:center; padding: 18px 0 6px;">
+          <h2 id="pvp-finish-title" style="margin:0 0 14px 0;">Winner</h2>
+
+          <button class="dx-btn dx-btn--primary"
+                  onclick="window.location.href='./index.html'">
+            Меню
+          </button>
+        </div>
+
         <!-- Board (як у bot game, але USER/OPP) -->
         <div class="dx-round-board">
           <div class="dx-round-row">
@@ -90,13 +100,14 @@
         </div>
 
         <!-- Buttons -->
-        <div class="dx-rps-buttons">
+        <div class="dx-rps-buttons" id="pvp-buttons">
           <button class="dx-rps-btn" data-move="rock">🪨 Камінь</button>
           <button class="dx-rps-btn" data-move="scissors">✂️ Ножиці</button>
           <button class="dx-rps-btn" data-move="paper">📄 Бумага</button>
         </div>
 
         <button class="dx-btn dx-btn--primary dx-back"
+                id="pvp-back"
                 onclick="window.location.href='./index.html'">
           Назад
         </button>
@@ -112,6 +123,7 @@
     </footer>
 
   </div>
+
   <!-- JS -->
   <script src="/src/js/dreamx_core.js?v=16"></script>
   <script src="/src/js/api_client.js?v=16"></script>
@@ -121,23 +133,76 @@
   <script>
     const statusEl = document.getElementById("pvp-status");
 
+    const finishEl = document.getElementById("pvp-finish");
+    const finishTitleEl = document.getElementById("pvp-finish-title");
+    const buttonsEl = document.getElementById("pvp-buttons");
+    const backEl = document.getElementById("pvp-back");
+
+    let myUserId = null;
+
     function setStatus(text) {
       statusEl.textContent = text;
     }
+
+    function lockMoves() {
+      document.querySelectorAll("[data-move]").forEach(b => (b.disabled = true));
+    }
+
+    function showFinish(title) {
+      finishTitleEl.textContent = title;
+      finishEl.style.display = "block";
+
+      // ховаємо ігрові контроли
+      if (buttonsEl) buttonsEl.style.display = "none";
+      if (backEl) backEl.style.display = "none";
+
+      lockMoves();
+    }
+
+    // ✅ NEW: дізнаємось internal user_id (users.id), щоб правильно показати Winner/Defeated
+    (async function preloadMe() {
+      try {
+        const me = await window.Api?.me?.();
+        if (me?.ok && me?.user?.id) {
+          myUserId = Number(me.user.id);
+        }
+      } catch (e) {
+        // нічого страшного, просто не зможемо відрізнити Winner/Defeated (тільки Draw)
+      }
+    })();
 
     PvPScreen.events.onQueueJoined = () => setStatus("🔍 Пошук суперника...");
     PvPScreen.events.onWaitingOpponent = () => setStatus("⏳ Очікуємо другого гравця...");
     PvPScreen.events.onMatchStarted = () => setStatus("⚔️ Гра почалась! Зроби хід 👇");
     PvPScreen.events.onCanMove = () => setStatus("🎯 Твій хід");
     PvPScreen.events.onRoundResolved = () => setStatus("✅ Хід зараховано");
-    PvPScreen.events.onError = (err) => {
-    console.error("[PvP ERROR]", err);
-  
-    const code = err?.error || err?.code || "unknown";
-    const details = err?.details ? ` (${String(err.details).slice(0, 120)})` : "";
-    setStatus(`⚠️ PvP: ${code}${details}`);
-  };
 
+    // ✅ NEW: фінал
+    PvPScreen.events.onMatchFinished = (match) => {
+      // match.winner_id: null => Draw
+      const winnerId = match?.winner_id ?? null;
+
+      if (!winnerId) {
+        showFinish("Draw");
+        return;
+      }
+
+      // якщо ми не знаємо myUserId — показуємо просто Winner (краще ніж помилитись)
+      if (!myUserId) {
+        showFinish("Winner");
+        return;
+      }
+
+      showFinish(Number(winnerId) === Number(myUserId) ? "Winner" : "Defeated");
+    };
+
+    PvPScreen.events.onError = (err) => {
+      console.error("[PvP ERROR]", err);
+
+      const code = err?.error || err?.code || "unknown";
+      const details = err?.details ? ` (${String(err.details).slice(0, 120)})` : "";
+      setStatus(`⚠️ PvP: ${code}${details}`);
+    };
 
     document.querySelectorAll("[data-move]").forEach(btn => {
       btn.addEventListener("click", () => {
