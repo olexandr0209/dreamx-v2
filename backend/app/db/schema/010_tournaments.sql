@@ -1,36 +1,32 @@
--- 010_tournaments.sql
+-- 010_tournaments.sql (SAFE)
 
+-- 1) create base table if missing
 CREATE TABLE IF NOT EXISTS tournaments (
-  id BIGSERIAL PRIMARY KEY,
-  created_by_tg BIGINT NOT NULL,
-
-  title TEXT NOT NULL,
-  description TEXT NULL,
-  prize TEXT NOT NULL,
-
-  access_type TEXT NOT NULL DEFAULT 'public', -- public/private
-  join_code TEXT NULL,
-
-  start_mode TEXT NOT NULL, -- datetime/delay
-  start_at TIMESTAMPTZ NULL, -- зберігаємо в UTC
-  start_delay_sec INT NULL,  -- якщо delay
-
-  max_participants INT NOT NULL DEFAULT 64,   -- snapshot з app_settings
-  chat_enabled BOOLEAN NOT NULL DEFAULT FALSE, -- snapshot з app_settings
-
-  status TEXT NOT NULL DEFAULT 'draft', -- draft/open/running/finished
-
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id BIGSERIAL PRIMARY KEY
 );
 
-CREATE INDEX IF NOT EXISTS idx_tournaments_creator
-  ON tournaments(created_by_tg);
+-- 2) add columns if missing (safe for already existing table)
+ALTER TABLE tournaments
+  ADD COLUMN IF NOT EXISTS created_by_tg BIGINT NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS description TEXT NULL,
+  ADD COLUMN IF NOT EXISTS prize TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS access_type TEXT NOT NULL DEFAULT 'public',
+  ADD COLUMN IF NOT EXISTS join_code TEXT NULL,
+  ADD COLUMN IF NOT EXISTS start_mode TEXT NOT NULL DEFAULT 'delay',
+  ADD COLUMN IF NOT EXISTS start_at TIMESTAMPTZ NULL,
+  ADD COLUMN IF NOT EXISTS start_delay_sec INT NULL,
+  ADD COLUMN IF NOT EXISTS max_participants INT NOT NULL DEFAULT 64,
+  ADD COLUMN IF NOT EXISTS chat_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'draft',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
-CREATE INDEX IF NOT EXISTS idx_tournaments_status
-  ON tournaments(status);
+-- 3) indexes (now column exists)
+CREATE INDEX IF NOT EXISTS idx_tournaments_creator ON tournaments(created_by_tg);
+CREATE INDEX IF NOT EXISTS idx_tournaments_status ON tournaments(status);
 
--- (опційно на майбутнє) таблиця учасників
+-- 4) players table
 CREATE TABLE IF NOT EXISTS tournament_players (
   id BIGSERIAL PRIMARY KEY,
   tournament_id BIGINT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
