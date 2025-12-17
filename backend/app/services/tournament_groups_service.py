@@ -41,6 +41,13 @@ def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None =
     stage = db.ensure_stage(tournament_id, 1, status="pending")
     stage_id = int(stage["id"])
 
+    # ✅ NEW: заборона join після старту stage / після створення груп
+    st_now = db.get_stage(tournament_id, 1)
+    if st_now and st_now.get("status") != "pending":
+        return {"ok": False, "error": "already_started"}
+    if st_now and db.stage_has_groups(int(st_now["id"])):
+        return {"ok": False, "error": "already_started"}
+
     maxp = int(t.get("max_participants") or 64)
     cur = db.count_stage_players(stage_id)
     if cur >= maxp:
@@ -208,20 +215,29 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     # tick на кожний state (як у PvP polling)
     tick_tournament(tournament_id)
 
-    st1 = db.get_stage(tournament_id, 1)
-    if not st1:
+    # ✅ NEW: намагаємось взяти "останній stage" для цього юзера
+    st = None
+    fn_latest = getattr(db, "get_user_latest_stage", None)
+    if callable(fn_latest):
+        st = fn_latest(tournament_id, tg_user_id)
+
+    if not st:
+        st = db.get_stage(tournament_id, 1)
+
+    if not st:
         return {"ok": True, "phase": "no_stage"}
 
-    # знайдемо найвищий stage де є цей юзер (спочатку stage 1 для MVP)
-    stage_id = int(st1["id"])
+    stage_id = int(st["id"])
+    stage_no = int(st.get("stage_no") or 1)
+    stage_status = st["status"]
+
     g = db.get_group_by_user(stage_id, tg_user_id)
 
     if not g:
         # або ще не приєднався, або ще не сформували групи
-        stage_status = st1["status"]
         if stage_status == "pending":
-            return {"ok": True, "phase": "registration", "stage_no": 1, "stage_status": stage_status}
-        return {"ok": True, "phase": "waiting_group", "stage_no": 1, "stage_status": stage_status}
+            return {"ok": True, "phase": "registration", "stage_no": stage_no, "stage_status": stage_status}
+        return {"ok": True, "phase": "waiting_group", "stage_no": stage_no, "stage_status": stage_status}
 
     group_id = int(g["id"])
     members = db.list_group_members(group_id)
@@ -247,8 +263,8 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     return {
         "ok": True,
         "phase": "group",
-        "stage_no": 1,
-        "stage_status": st1["status"],
+        "stage_no": stage_no,
+        "stage_status": stage_status,
         "group": {
             "id": group_id,
             "status": g["status"],
@@ -322,6 +338,42 @@ def _build_match_state(match: dict, tg_user_id: int) -> dict:
     }
 
 
+def _set_game_result_if_empty(match_id: int, game_no: int, result: str, p1_points: int, p2_points: int) -> bool:
+    # ✅ атомарно: тільки якщо result IS NULL (захист від double-scoring)
+    from app.db.connection import get_conn
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE tournament_match_games
+                SET result=%s, p1_points=%s, p2_points=%s
+                WHERE match_id=%s AND game_no=%s AND result IS NULL
+                """,
+                (result, p1_points, p2_points, match_id, game_no),
+            )
+            changed = (cur.rowcount == 1)
+        conn.commit()
+    return changed
+
+
+def _finish_match_if_not_finished(match_id: int, winner_tg_user_id: int | None) -> bool:
+    # ✅ ідемпотентно: тільки якщо ще не finished
+    from app.db.connection import get_conn
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE tournament_group_matches
+                SET status='finished', winner_tg_user_id=%s, updated_at=NOW()
+                WHERE id=%s AND status!='finished'
+                """,
+                (winner_tg_user_id, match_id),
+            )
+            changed = (cur.rowcount == 1)
+        conn.commit()
+    return changed
+
+
 def submit_move(tournament_id: int, tg_user_id: int, match_id: int, move: str) -> dict:
     move = (move or "").strip()
     if move not in MOVES:
@@ -369,7 +421,12 @@ def submit_move(tournament_id: int, tg_user_id: int, match_id: int, move: str) -
     if g.get("result") is None and g.get("p1_move") and g.get("p2_move"):
         res = decide(g["p1_move"], g["p2_move"])
         p1_pts, p2_pts = points_for(res)
-        db.set_game_result(match_id, game_no, res, p1_pts, p2_pts)
+
+        # ✅ NEW: рахуємо тільки 1 раз (якщо result був NULL)
+        changed = _set_game_result_if_empty(match_id, game_no, res, p1_pts, p2_pts)
+        if not changed:
+            return {"ok": True}
+
         db.apply_match_progress(match_id, 1, p1_pts, p2_pts)
 
         # якщо серія завершилась — фініш матчу + апдейт members
@@ -381,18 +438,20 @@ def submit_move(tournament_id: int, tg_user_id: int, match_id: int, move: str) -
             elif int(m2["p2_series_points"]) > int(m2["p1_series_points"]):
                 w = p2
 
-            db.finish_match(match_id, w)
-            db.apply_member_match_result(
-                group_id=int(m2["group_id"]),
-                p1=p1,
-                p2=p2,
-                p1_series_points=int(m2["p1_series_points"]),
-                p2_series_points=int(m2["p2_series_points"]),
-                winner=w,
-            )
+            # ✅ NEW: finish тільки 1 раз
+            finished_now = _finish_match_if_not_finished(match_id, w)
+            if finished_now:
+                db.apply_member_match_result(
+                    group_id=int(m2["group_id"]),
+                    p1=p1,
+                    p2=p2,
+                    p1_series_points=int(m2["p1_series_points"]),
+                    p2_series_points=int(m2["p2_series_points"]),
+                    winner=w,
+                )
 
-            # після кожного завершеного матчу — пробуємо просунути round/group
-            _maybe_advance_group_after_match(int(m2["group_id"]))
+                # після кожного завершеного матчу — пробуємо просунути round/group
+                _maybe_advance_group_after_match(int(m2["group_id"]))
 
     return {"ok": True}
 
