@@ -409,7 +409,7 @@ def upsert_game_move(match_id: int, game_no: int, as_p1: bool, move: str) -> Non
         conn.commit()
 
 
-def set_game_result(match_id: int, game_no: int, result: str, p1_points: int, p2_points: int) -> None:
+def set_game_result(match_id: int, game_no: int, result: str, p1_points: int, p2_points: int) -> bool:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -420,7 +420,9 @@ def set_game_result(match_id: int, game_no: int, result: str, p1_points: int, p2
                 """,
                 (result, p1_points, p2_points, match_id, game_no),
             )
+            changed = (cur.rowcount == 1)
         conn.commit()
+    return changed
 
 
 def apply_match_progress(
@@ -445,18 +447,20 @@ def apply_match_progress(
         conn.commit()
 
 
-def finish_match(match_id: int, winner_tg_user_id: int | None) -> None:
+def finish_match(match_id: int, winner_tg_user_id: int | None) -> bool:
     with get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 UPDATE tournament_group_matches
                 SET status='finished', winner_tg_user_id=%s, updated_at=NOW()
-                WHERE id=%s
+                WHERE id=%s AND status!='finished'
                 """,
                 (winner_tg_user_id, match_id),
             )
+            changed = (cur.rowcount == 1)
         conn.commit()
+    return changed
 
 
 def apply_member_match_result(
@@ -494,6 +498,33 @@ def apply_member_match_result(
     else:
         upd(p1, p1_series_points, 0, 0, 1)
         upd(p2, p2_series_points, 1, 0, 0)
+
+def get_user_latest_stage(tournament_id: int, tg_user_id: int) -> dict | None:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT s.*
+                FROM tournament_stages s
+                WHERE s.tournament_id=%s
+                  AND (
+                    EXISTS (
+                      SELECT 1 FROM tournament_stage_players sp
+                      WHERE sp.stage_id=s.id AND sp.tg_user_id=%s
+                    )
+                    OR EXISTS (
+                      SELECT 1
+                      FROM tournament_groups g
+                      JOIN tournament_group_members m ON m.group_id=g.id
+                      WHERE g.stage_id=s.id AND m.tg_user_id=%s
+                    )
+                  )
+                ORDER BY s.stage_no DESC
+                LIMIT 1
+                """,
+                (tournament_id, tg_user_id, tg_user_id),
+            )
+            return cur.fetchone()
 
 
 def set_member_ranks(group_id: int, ordered_tg_ids: list[int], advanced_top: int = 2) -> None:
