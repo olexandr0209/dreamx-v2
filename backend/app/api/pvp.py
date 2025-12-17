@@ -8,6 +8,9 @@ bp_pvp = Blueprint("pvp", __name__, url_prefix="/pvp")
 
 MOVES = ("rock", "paper", "scissors")
 
+# ✅ NEW: фіксована довжина матчу
+MAX_ROUNDS = 5  # 5 раундів * 3 ходи = 15 ходів
+
 
 def _get_tg_user_id():
     tg = request.headers.get("X-Tg-User-Id") or request.args.get("tg_user_id")
@@ -78,7 +81,7 @@ def _update_match_round_step_sql(match: dict):
     return ("round_number", "step_in_round")
 
 
-# ✅ NEW: кеш колонок pvp_moves (щоб не бити information_schema кожен раз)
+# ✅ кеш колонок pvp_moves (щоб не бити information_schema кожен раз)
 _PVP_MOVES_COLS = None
 
 
@@ -203,6 +206,7 @@ def match_state():
                     "ok": True,
                     "match": match,
                     "my_role": "p1" if me_id == match["player1_id"] else "p2",
+                    "my_user_id": me_id,  # ✅ NEW: щоб фронт точно знав Winner/Defeated
                     "can_move": (
                         match["status"] == "playing"
                         and match["player2_id"] is not None
@@ -260,7 +264,7 @@ def match_move():
                 if cur.fetchone():
                     return jsonify({"ok": True, "status": "already_moved", "match": match})
 
-                # ✅ NEW: якщо в pvp_moves є NOT NULL колонка step — заповнюємо її також
+                # якщо в pvp_moves є NOT NULL колонка step — заповнюємо її також
                 cols = _get_pvp_moves_cols(cur)
                 has_step_col = ("step" in cols)
 
@@ -272,7 +276,6 @@ def match_move():
                         DO NOTHING
                     """, (match_id, rn, step, step, me_id, move))
                 else:
-                    # старий варіант (як у тебе було)
                     cur.execute("""
                         INSERT INTO pvp_moves(match_id, round_number, step_in_round, player_id, move)
                         VALUES (%s,%s,%s,%s,%s)
@@ -300,7 +303,7 @@ def match_move():
                 result = _decide(p1m, p2m)
                 add_p1, add_p2 = _points_for(result)
 
-                # next step/round
+                # next step/round (твоя логіка як була)
                 next_step = step + 1
                 next_round = rn
                 if next_step >= 3:
@@ -309,21 +312,46 @@ def match_move():
 
                 round_col, step_col = _update_match_round_step_sql(match)
 
+                # ✅ NEW: фініш після 5-го раунду на 3-му кроці (step==2)
+                is_last_step = (rn == MAX_ROUNDS and step == 2)
+
+                # рахуємо фінальні очки, щоб визначити winner_id
+                cur_score_p1 = int(match.get("score_p1") or 0)
+                cur_score_p2 = int(match.get("score_p2") or 0)
+                final_score_p1 = cur_score_p1 + add_p1
+                final_score_p2 = cur_score_p2 + add_p2
+
+                winner_id = None
+                if is_last_step:
+                    if final_score_p1 > final_score_p2:
+                        winner_id = match["player1_id"]
+                    elif final_score_p2 > final_score_p1:
+                        winner_id = match["player2_id"]
+                    else:
+                        winner_id = None  # draw
+
+                new_status = "finished" if is_last_step else "playing"
+                upd_step = step if is_last_step else next_step
+                upd_round = rn if is_last_step else next_round
+
                 cur.execute(f"""
                     UPDATE pvp_matches
                     SET score_p1 = COALESCE(score_p1, 0) + %s,
                         score_p2 = COALESCE(score_p2, 0) + %s,
                         {step_col} = %s,
                         {round_col} = %s,
+                        status = %s,
+                        winner_id = %s,
                         updated_at = NOW()
                     WHERE id = %s
                     RETURNING *
-                """, (add_p1, add_p2, next_step, next_round, match_id))
+                """, (add_p1, add_p2, upd_step, upd_round, new_status, winner_id, match_id))
                 new_match = cur.fetchone()
 
                 return jsonify({
                     "ok": True,
                     "status": "resolved",
+                    "game_over": (new_match.get("status") == "finished"),  # ✅ NEW
                     "p1_move": p1m,
                     "p2_move": p2m,
                     "result": "draw" if result == "draw" else (
