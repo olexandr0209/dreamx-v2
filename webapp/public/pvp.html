@@ -33,7 +33,7 @@
     <main class="dx-content dx-game dx-pvp">
       <section class="dx-game-card">
 
-        <!-- VS row (візуально як у Figma/бот-екрані) -->
+        <!-- VS row -->
         <div class="dx-pvp-vs">
           <div class="dx-pvp-side">
             <div class="dx-avatar dx-avatar--sm">
@@ -54,7 +54,7 @@
           </div>
         </div>
 
-        <!-- Counters row (як у bot game) -->
+        <!-- Counters row -->
         <div class="dx-counters-row">
           <div class="dx-pill">
             <span>Раунд</span>
@@ -72,7 +72,7 @@
           Підключення до черги...
         </p>
 
-        <!-- ✅ FINISH SCREEN (Winner / Defeated / Draw + Menu) -->
+        <!-- FINISH -->
         <div id="pvp-finish" style="display:none; text-align:center; padding: 18px 0 6px;">
           <h2 id="pvp-finish-title" style="margin:0 0 14px 0;">Winner</h2>
 
@@ -149,7 +149,7 @@
     const roundEl = document.querySelector("[data-round]");
     const scoreEl = document.querySelector("[data-score]");
 
-    // ✅ NEW: refs for names/photos
+    // refs for names/photos
     const meNameEl = document.querySelector("[data-me-name]");
     const opNameEl = document.querySelector("[data-op-name]");
     const meImg = document.querySelector("[data-me-photo]");
@@ -157,7 +157,6 @@
     const meFallback = document.querySelector("[data-me-fallback]");
     const opFallback = document.querySelector("[data-op-fallback]");
 
-    // ✅ NEW: елементи дошки (кружечки + “бали за раунд”)
     const meDots = [
       document.querySelector("[data-user-0]"),
       document.querySelector("[data-user-1]"),
@@ -174,10 +173,13 @@
     let myUserId = null;
     let myRole = null; // 'p1' | 'p2'
 
-    // ✅ локальний стан раунду
+    // локальний стан раунду
     let curRoundShown = 1;
     let roundPointsMe = 0;
     let roundPointsOp = 0;
+
+    // ✅ NEW: щоб не перезаписувати DOM кожен poll
+    let lastPlayersStamp = null;
 
     function setStatus(text) {
       statusEl.textContent = text;
@@ -190,6 +192,7 @@
     function unlockMoves() {
       document.querySelectorAll("[data-move]").forEach(b => (b.disabled = false));
     }
+
     function setMovesEnabled(flag) {
       if (flag) unlockMoves();
       else lockMoves();
@@ -198,10 +201,8 @@
     function showFinish(title) {
       finishTitleEl.textContent = title;
       finishEl.style.display = "block";
-
       if (buttonsEl) buttonsEl.style.display = "none";
       if (backEl) backEl.style.display = "none";
-
       lockMoves();
     }
 
@@ -240,7 +241,6 @@
     }
 
     function computePlayedFromKey(keyStr) {
-      // key: "round-step" (наприклад "1-0")
       const s = String(keyStr || "");
       if (!s.includes("-")) return null;
       const [a, b] = s.split("-");
@@ -250,23 +250,62 @@
       return { rr, ss };
     }
 
+    function setAvatar(imgEl, fallbackEl, url) {
+      if (!imgEl || !fallbackEl) return;
+
+      if (url) {
+        imgEl.src = url;
+        imgEl.style.display = "block";
+        fallbackEl.style.display = "none";
+      } else {
+        imgEl.style.display = "none";
+        fallbackEl.style.display = "block";
+      }
+    }
+
+    function renderPlayers(res) {
+      const players = res?.players || null;
+      if (!players || !myRole) return;
+
+      const meP = (myRole === "p2") ? players.p2 : players.p1;
+      const opP = (myRole === "p2") ? players.p1 : players.p2;
+
+      // ✅ stamp: щоб не дергати DOM постійно
+      const stamp = JSON.stringify({
+        mr: myRole,
+        me: { u: meP?.username || null, p: meP?.photo_url || null },
+        op: { u: opP?.username || null, p: opP?.photo_url || null },
+      });
+      if (stamp === lastPlayersStamp) return;
+      lastPlayersStamp = stamp;
+
+      const meLabel = (meP?.username) ? `@${meP.username}` : "Ти";
+      const opLabel = (opP?.username) ? `@${opP.username}` : "Суперник";
+
+      if (meNameEl) meNameEl.textContent = meLabel;
+      if (opNameEl) opNameEl.textContent = opLabel;
+
+      setAvatar(meImg, meFallback, meP?.photo_url || null);
+      setAvatar(opImg, opFallback, opP?.photo_url || null);
+    }
+
     function renderResolved(res) {
       if (!res || !res.match) return;
 
-      // ✅ НАДІЙНО: беремо крок з res.key, щоб не було “залипання”
+      // ✅ НАДІЙНО: step з res.key
       const played = computePlayedFromKey(res.key);
       if (!played) return;
 
       const rr = played.rr;
       const ss = played.ss;
 
-      // ✅ якщо новий раунд — чистимо
+      // ✅ новий раунд — чистимо
       if (rr !== curRoundShown) {
         curRoundShown = rr;
         clearRoundUI();
       }
 
-      // ✅ якщо це перший хід раунду — теж чистимо (на випадок розсинхрону UI)
+      // ✅ нові "3 ходи" (step=0) — завжди старт чистий
       if (ss === 0) {
         clearRoundUI();
       }
@@ -284,39 +323,13 @@
       applyRoundPoints(res.result);
     }
 
-    function setAvatar(imgEl, fallbackEl, url) {
-      if (!imgEl || !fallbackEl) return;
-      if (url) {
-        imgEl.src = url;
-        imgEl.style.display = "block";
-        fallbackEl.style.display = "none";
-      } else {
-        imgEl.style.display = "none";
-        fallbackEl.style.display = "block";
-      }
-    }
-
-    // ✅ NEW: onStateUpdate (names/photos + score/round)
+    // onStateUpdate
     PvPScreen.events.onStateUpdate = (res) => {
       try {
         if (res?.my_user_id) myUserId = Number(res.my_user_id);
         if (res?.my_role) myRole = String(res.my_role);
 
-        // ✅ players info from backend
-        const players = res?.players || null;
-        if (players && myRole) {
-          const meP = (myRole === "p2") ? players.p2 : players.p1;
-          const opP = (myRole === "p2") ? players.p1 : players.p2;
-
-          const meLabel = (meP?.username) ? `@${meP.username}` : "Ти";
-          const opLabel = (opP?.username) ? `@${opP.username}` : "Суперник";
-
-          if (meNameEl) meNameEl.textContent = meLabel;
-          if (opNameEl) opNameEl.textContent = opLabel;
-
-          setAvatar(meImg, meFallback, meP?.photo_url || null);
-          setAvatar(opImg, opFallback, opP?.photo_url || null);
-        }
+        renderPlayers(res);
 
         const m = res?.match || {};
         const rn = getMatchRound(m);
@@ -346,6 +359,9 @@
     PvPScreen.events.onCanMove = () => { setMovesEnabled(true); setStatus("🎯 Твій хід"); };
 
     PvPScreen.events.onRoundResolved = (res) => {
+      // ✅ щоб нік/аватар точно встиг підʼїхати
+      renderPlayers(res);
+
       renderResolved(res);
       setMovesEnabled(false);
       setStatus("✅ Хід зараховано");
@@ -353,23 +369,13 @@
 
     PvPScreen.events.onMatchFinished = (match) => {
       const winnerId = match?.winner_id ?? null;
-
-      if (!winnerId) {
-        showFinish("Draw");
-        return;
-      }
-
-      if (!myUserId) {
-        showFinish("Winner");
-        return;
-      }
-
+      if (!winnerId) return showFinish("Draw");
+      if (!myUserId) return showFinish("Winner");
       showFinish(Number(winnerId) === Number(myUserId) ? "Winner" : "Defeated");
     };
 
     PvPScreen.events.onError = (err) => {
       console.error("[PvP ERROR]", err);
-
       const code = err?.error || err?.code || "unknown";
       const details = err?.details ? ` (${String(err.details).slice(0, 120)})` : "";
       setMovesEnabled(false);
