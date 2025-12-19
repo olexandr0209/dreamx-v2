@@ -193,27 +193,26 @@ def _progress_stage(stage_id: int, tournament_id: int, stage_no: int) -> None:
 
 
 def _progress_group(group_id: int) -> None:
-    # логіка проста:
-    # - якщо всі матчі поточного round_no finished -> current_round++
-    # - якщо current_round > total_rounds -> group finished + ranks
-    # - tie-break поки не робимо (додамо окремо, коли дійдемо до цього кроку)
-
-    # беремо group (заново)
-    stage_group = None
-    for gg in db.list_stage_groups(db.get_group_by_user.__globals__['get_conn'] if False else 0):  # never executed
-        stage_group = gg
-
-    # простіше — просто читаємо group через list_stage_groups ми не можемо тут.
-    # Тому візьмемо дані через get_group_by_user з будь-яким користувачем не можна.
-    # -> зробимо мінімально: працюємо через матчі, і фініш робимо при state/after match.
-
-    # Ми НЕ робимо фонового "сканування" тут.
+    # ✅ ВАЖЛИВО: тут НЕ робимо фонове "сканування" і НЕ ліземо в БД зайвий раз.
+    # Просування round/group робиться після кожного завершеного матчу у _maybe_advance_group_after_match().
     return
 
 
 def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     # tick на кожний state (як у PvP polling)
     tick_tournament(tournament_id)
+
+    # ✅ NEW (мінімально): UI-поля (назва/організатор/таймер/кількість/чи joined)
+    t = db.get_tournament(tournament_id)
+    start_at = _parse_start_at(t.get("start_at")) if t else None
+    now_utc = datetime.now(timezone.utc)
+    seconds_to_start = None
+    if start_at:
+        seconds_to_start = max(0, int((start_at - now_utc).total_seconds()))
+    start_total_sec = int((t.get("start_delay_sec") or 60)) if t else 60
+
+    tournament_name = (t.get("name") or t.get("title") or f"#{tournament_id}") if t else f"#{tournament_id}"
+    organizer = (t.get("organizer") or t.get("owner_name") or "—") if t else "—"
 
     # ✅ NEW: намагаємось взяти "останній stage" для цього юзера
     st = None
@@ -225,22 +224,72 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
         st = db.get_stage(tournament_id, 1)
 
     if not st:
-        return {"ok": True, "phase": "no_stage"}
+        return {
+            "ok": True,
+            "phase": "no_stage",
+            "tournament_name": tournament_name,
+            "organizer": organizer,
+            "seconds_to_start": seconds_to_start,
+            "start_total_sec": start_total_sec,
+            "players_count": 0,
+            "joined": False,
+        }
 
     stage_id = int(st["id"])
     stage_no = int(st.get("stage_no") or 1)
     stage_status = st["status"]
+
+    # ✅ NEW: players_count + joined (без зміни db-файлів)
+    players_count = db.count_stage_players(stage_id)
+    try:
+        stage_players = db.list_stage_players(stage_id)
+        joined = (tg_user_id in stage_players)
+    except Exception:
+        joined = False
 
     g = db.get_group_by_user(stage_id, tg_user_id)
 
     if not g:
         # або ще не приєднався, або ще не сформували групи
         if stage_status == "pending":
-            return {"ok": True, "phase": "registration", "stage_no": stage_no, "stage_status": stage_status}
-        return {"ok": True, "phase": "waiting_group", "stage_no": stage_no, "stage_status": stage_status}
+            return {
+                "ok": True,
+                "phase": "registration",
+                "stage_no": stage_no,
+                "stage_status": stage_status,
+                "tournament_name": tournament_name,
+                "organizer": organizer,
+                "seconds_to_start": seconds_to_start,
+                "start_total_sec": start_total_sec,
+                "players_count": players_count,
+                "joined": joined,
+            }
+        return {
+            "ok": True,
+            "phase": "waiting_group",
+            "stage_no": stage_no,
+            "stage_status": stage_status,
+            "tournament_name": tournament_name,
+            "organizer": organizer,
+            "seconds_to_start": seconds_to_start,
+            "start_total_sec": start_total_sec,
+            "players_count": players_count,
+            "joined": joined,
+        }
 
     group_id = int(g["id"])
     members = db.list_group_members(group_id)
+
+    # ✅ NEW: group_members для WebApp (список як у Figma)
+    group_members = sorted(members, key=lambda x: int(x["seat"]))
+    group_members_ui = [
+        {
+            "tg_user_id": int(x["tg_user_id"]),
+            "seat": int(x["seat"]),
+            "username": x.get("username") if isinstance(x, dict) else None,
+        }
+        for x in group_members
+    ]
 
     # standings (простий сорт)
     standings = sorted(
@@ -265,6 +314,12 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
         "phase": "group",
         "stage_no": stage_no,
         "stage_status": stage_status,
+        "tournament_name": tournament_name,
+        "organizer": organizer,
+        "seconds_to_start": seconds_to_start,
+        "start_total_sec": start_total_sec,
+        "players_count": players_count,
+        "joined": joined,
         "group": {
             "id": group_id,
             "status": g["status"],
@@ -273,6 +328,7 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
             "current_round": current_round,
             "total_rounds": g["total_rounds"],
         },
+        "group_members": group_members_ui,
         "standings": [
             {
                 "tg_user_id": int(x["tg_user_id"]),
@@ -324,6 +380,17 @@ def _build_match_state(match: dict, tg_user_id: int) -> dict:
         if (not you_are_p1) and latest.get("p2_move") is not None:
             need_move = False
 
+    # ✅ NEW: my_move / opponent_move для кружечків у WebApp
+    my_move = None
+    opponent_move = None
+    if latest and latest.get("result") is None:
+        if you_are_p1:
+            my_move = latest.get("p1_move")
+            opponent_move = latest.get("p2_move")
+        else:
+            my_move = latest.get("p2_move")
+            opponent_move = latest.get("p1_move")
+
     return {
         "id": mid,
         "status": match["status"],
@@ -335,6 +402,8 @@ def _build_match_state(match: dict, tg_user_id: int) -> dict:
         "p2_series_points": int(match["p2_series_points"]),
         "next_game_no": game_no,
         "need_move": need_move,
+        "my_move": my_move,
+        "opponent_move": opponent_move,
     }
 
 
