@@ -1,1 +1,206 @@
+/* tournament.css
+   СКОП: тільки для .dx-tournament щоб не зламати інші екрани
+*/
+
+.dx-tournament {
+  display: block;
+}
+
+.tg-card {
+  margin-bottom: 14px;
+  padding: 14px;
+  border-radius: 18px;
+}
+
+.tg-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.tg-card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.tg-pill {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.03);
+  white-space: nowrap;
+}
+
+.tg-row {
+  margin-top: 10px;
+}
+
+.tg-label {
+  display: block;
+  font-size: 12px;
+  opacity: 0.75;
+  margin-bottom: 6px;
+}
+
+.tg-inline {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tg-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.9);
+  outline: none;
+}
+
+.tg-input:focus {
+  border-color: rgba(0,0,0,0.22);
+}
+
+.tg-btn {
+  white-space: nowrap;
+}
+
+.tg-btn--ghost {
+  background: transparent;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+
+.tg-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.65;
+}
+
+.tg-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.tg-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.tg-note {
+  margin-top: 10px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.tg-status {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.tg-mini {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.tg-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.35);
+  display: inline-block;
+}
+
+.tg-table-wrap {
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.tg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.tg-table thead th {
+  text-align: left;
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.03);
+  white-space: nowrap;
+}
+
+.tg-table tbody td {
+  padding: 10px 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  white-space: nowrap;
+}
+
+.tg-empty {
+  text-align: center;
+  opacity: 0.6;
+  padding: 16px 10px;
+}
+
+.tg-match-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.tg-kv {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(0,0,0,0.02);
+}
+
+.tg-k {
+  font-size: 11px;
+  opacity: 0.65;
+  margin-bottom: 4px;
+}
+
+.tg-v {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tg-rps {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.tg-rps-btn {
+  min-height: 44px;
+  border-radius: 16px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.9);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tg-rps-btn:disabled {
+  opacity: 0.45;
+}
+
+.tg-back {
+  width: 100%;
+  margin-top: 6px;
+  border-radius: 18px;
+}
 
