@@ -18,7 +18,8 @@ def _ensure_schema_migrations_table(cur):
 
 def _already_applied(cur) -> set[str]:
     cur.execute("SELECT filename FROM schema_migrations;")
-    return {row[0] for row in cur.fetchall()}
+    return {row["filename"] for row in cur.fetchall()}
+
 
 def _apply_file(cur, filename: str, sql_text: str):
     cur.execute(sql_text)
