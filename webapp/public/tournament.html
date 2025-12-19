@@ -1,1 +1,189 @@
+<!-- tournament.html -->
+
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX • Tournament</title>
+
+  <link rel="stylesheet" href="/src/css/tokens.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+  <link rel="stylesheet" href="/src/css/tournament.css" />
+</head>
+
+<body class="dx theme-light">
+  <div class="dx-app">
+
+    <!-- TOP BAR -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <div class="dx-brand">
+          <div class="dx-brand__logo">DX</div>
+          <div class="dx-brand__text">
+            <div class="dx-brand__title">Tournament</div>
+            <div class="dx-brand__subtitle" id="tg-subtitle">Груповий етап</div>
+          </div>
+        </div>
+
+        <div class="dx-topbar__right">
+          <div class="dx-chip" id="tg-chip">Live</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="dx-content dx-tournament">
+
+      <!-- CARD: Tournament selector -->
+      <section class="dx-card tg-card">
+        <div class="tg-card__head">
+          <h2 class="tg-card__title">Турнір</h2>
+          <div class="tg-pill" id="tg-tournament-pill">ID: —</div>
+        </div>
+
+        <div class="tg-row">
+          <label class="tg-label" for="tg-tournament-id">Tournament ID</label>
+          <div class="tg-inline">
+            <input id="tg-tournament-id" class="tg-input" type="number" inputmode="numeric" placeholder="Напр. 1" />
+            <button id="tg-open" class="dx-btn dx-btn--primary tg-btn">Відкрити</button>
+          </div>
+          <div class="tg-hint">Можна передати в URL: <span class="tg-mono">?tournament_id=1</span></div>
+        </div>
+      </section>
+
+      <!-- CARD: Join / Leave -->
+      <section class="dx-card tg-card">
+        <div class="tg-card__head">
+          <h2 class="tg-card__title">Участь</h2>
+          <div class="tg-pill" id="tg-phase-pill">phase: —</div>
+        </div>
+
+        <div class="tg-row">
+          <label class="tg-label" for="tg-join-code">Join code (якщо private)</label>
+          <input id="tg-join-code" class="tg-input" type="text" placeholder="Напр. ABC123" />
+        </div>
+
+        <div class="tg-actions">
+          <button id="tg-join" class="dx-btn dx-btn--primary tg-btn">✅ Join</button>
+          <button id="tg-leave" class="dx-btn tg-btn tg-btn--ghost">❌ Leave</button>
+        </div>
+
+        <div class="tg-note" id="tg-join-note">Після старту етапу (груп) — join буде заборонено.</div>
+      </section>
+
+      <!-- CARD: Status -->
+      <section class="dx-card tg-card">
+        <div class="tg-card__head">
+          <h2 class="tg-card__title">Статус</h2>
+          <div class="tg-pill" id="tg-stage-pill">stage: —</div>
+        </div>
+
+        <p class="tg-status" id="tg-status">
+          Готово. Натисни “Відкрити”, потім “Join”.
+        </p>
+
+        <div class="tg-mini">
+          <span class="tg-dot"></span>
+          <span id="tg-polling">Polling: off</span>
+        </div>
+      </section>
+
+      <!-- CARD: Standings -->
+      <section class="dx-card tg-card">
+        <div class="tg-card__head">
+          <h2 class="tg-card__title">Таблиця групи</h2>
+          <div class="tg-pill" id="tg-group-pill">group: —</div>
+        </div>
+
+        <div class="tg-table-wrap">
+          <table class="tg-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>tg_id</th>
+                <th>Pts</th>
+                <th>W</th>
+                <th>D</th>
+                <th>L</th>
+                <th>MP</th>
+              </tr>
+            </thead>
+            <tbody id="tg-standings-body">
+              <tr>
+                <td colspan="7" class="tg-empty">Поки немає даних…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- CARD: Current match -->
+      <section class="dx-card tg-card">
+        <div class="tg-card__head">
+          <h2 class="tg-card__title">Поточний матч</h2>
+          <div class="tg-pill" id="tg-match-pill">match: —</div>
+        </div>
+
+        <div class="tg-match-grid">
+          <div class="tg-kv">
+            <div class="tg-k">Суперник</div>
+            <div class="tg-v" id="tg-opponent">—</div>
+          </div>
+          <div class="tg-kv">
+            <div class="tg-k">Серія</div>
+            <div class="tg-v" id="tg-series">0 : 0</div>
+          </div>
+          <div class="tg-kv">
+            <div class="tg-k">Гра</div>
+            <div class="tg-v" id="tg-next-game">—</div>
+          </div>
+          <div class="tg-kv">
+            <div class="tg-k">Хід</div>
+            <div class="tg-v" id="tg-need-move">—</div>
+          </div>
+        </div>
+
+        <div class="tg-rps">
+          <button class="tg-rps-btn" data-move="rock" disabled>🪨 Камінь</button>
+          <button class="tg-rps-btn" data-move="scissors" disabled>✂️ Ножиці</button>
+          <button class="tg-rps-btn" data-move="paper" disabled>📄 Бумага</button>
+        </div>
+
+        <div class="tg-note" id="tg-match-note">Кнопки активуються, коли <span class="tg-mono">need_move=true</span>.</div>
+      </section>
+
+      <button class="dx-btn dx-btn--primary tg-back" onclick="window.location.href='./index.html'">
+        Назад
+      </button>
+
+    </main>
+
+    <!-- BOTTOM BAR -->
+    <footer class="dx-bottombar">
+      <div class="dx-bottombar__inner">
+        <div class="dx-bottombar__label">Created by Oleksandr Krychylskyi</div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- JS (логіку додамо окремим чатом) -->
+  <script src="/src/js/dreamx_core.js?v=1"></script>
+  <script src="/src/js/tournament_client.js?v=1"></script>
+  <script src="/src/js/tournament_screen.js?v=1"></script>
+
+  <!-- Мінімально: підставити tournament_id з URL в інпут/плашку (без API) -->
+  <script>
+    (function () {
+      const p = new URLSearchParams(window.location.search);
+      const tid = p.get("tournament_id");
+      const input = document.getElementById("tg-tournament-id");
+      const pill = document.getElementById("tg-tournament-pill");
+      if (tid && input) input.value = tid;
+      if (tid && pill) pill.textContent = "ID: " + tid;
+    })();
+  </script>
+</body>
+</html>
 
