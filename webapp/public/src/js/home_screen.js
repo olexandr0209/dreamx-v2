@@ -1,6 +1,52 @@
 // webapp/public/src/js/home_screen.js
 
 document.addEventListener("DOMContentLoaded", () => {
+
+  // ✅ NEW: якщо WebApp відкрили через t.me/<bot>?startapp=...
+  // то Telegram передає payload у initDataUnsafe.start_param (і часто дублює в URL як tgWebAppStartParam)
+  function readStartParam() {
+    try {
+      const tg = window.Telegram?.WebApp;
+      const sp = tg?.initDataUnsafe?.start_param;
+      if (sp) return String(sp);
+    } catch (e) {}
+
+    try {
+      const p = new URLSearchParams(window.location.search || "");
+      const sp2 = p.get("tgWebAppStartParam");
+      if (sp2) return String(sp2);
+    } catch (e) {}
+
+    return null;
+  }
+
+  function parseTournamentPayload(sp) {
+    if (!sp) return null;
+    // очікуємо: t_<tid>_<code>
+    const m = String(sp).match(/^t_(\d+)_([A-Za-z0-9]{4,20})$/);
+    if (!m) return null;
+    return { tid: m[1], joinCode: m[2] };
+  }
+
+  const sp = readStartParam();
+  const parsed = parseTournamentPayload(sp);
+
+  if (parsed) {
+    // прогріваємо кеш Telegram user (як у твоєму коді)
+    try {
+      window.DreamX?.getUser?.();
+    } catch (e) {}
+
+    // переносимо існуючий query і додаємо tournament_id + join_code
+    const p = new URLSearchParams(window.location.search || "");
+    p.set("tournament_id", String(parsed.tid));
+    p.set("join_code", String(parsed.joinCode));
+
+    // ✅ одразу відкриваємо tournament.html
+    window.location.href = "./tournament.html?" + p.toString();
+    return; // важливо: щоб не навішувати зайві хендлери
+  }
+
   // ===== BOT =====
   const btnBot = document.getElementById("btn-play-bot");
   if (btnBot) {
