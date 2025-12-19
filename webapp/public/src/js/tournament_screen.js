@@ -1,4 +1,5 @@
 // webapp/public/src/js/tournament_screen.js
+
 (function () {
   if (!window.TournamentApi) {
     console.error("[Tournament] tournament_client.js not loaded");
@@ -10,88 +11,66 @@
   let tournamentId = null;
   let pollTimer = null;
 
-  let lastPhase = null;
   let lastMatchId = null;
-  let lastNeedMove = null;
+  let lastNeedMove = false;
 
-  const Events = {
-    onPhase: (state) => {},
-    onNeedJoin: (state) => {},
-    onRegistration: (state) => {},
-    onWaitingGroup: (state) => {},
-    onGroup: (state) => {},
-    onError: (err) => {},
-  };
+  // ---- DOM ----
+  const $ = (id) => document.getElementById(id);
 
-  // ---------- DOM ----------
-  const elInputTid = document.getElementById("tg-tournament-id");
-  const elOpen = document.getElementById("tg-open");
+  const elTName = $("tg-tname");
+  const elTMeta = $("tg-tmeta");
 
-  const elJoinCode = document.getElementById("tg-join-code");
-  const elJoin = document.getElementById("tg-join");
-  const elLeave = document.getElementById("tg-leave");
+  const scrFind = $("scr-find");
+  const scrReg = $("scr-registration");
+  const scrWait = $("scr-waiting");
+  const scrGroup = $("scr-group");
+  const scrError = $("scr-error");
 
-  const elStatus = document.getElementById("tg-status");
-  const elPolling = document.getElementById("tg-polling");
+  const elTidInput = $("tg-tournament-id");
+  const elJoinCode = $("tg-join-code");
+  const elOpen = $("tg-open");
 
-  const elTournamentPill = document.getElementById("tg-tournament-pill");
-  const elPhasePill = document.getElementById("tg-phase-pill");
-  const elStagePill = document.getElementById("tg-stage-pill");
-  const elGroupPill = document.getElementById("tg-group-pill");
-  const elMatchPill = document.getElementById("tg-match-pill");
+  const elJoin = $("tg-join");
 
-  const elSubtitle = document.getElementById("tg-subtitle");
+  const elStartBlock = $("tg-start-block");
+  const elStartIn = $("tg-start-in");
 
-  const elStandingsBody = document.getElementById("tg-standings-body");
+  const elPlayersCountBlock = $("tg-players-count-block");
+  const elPlayersCount = $("tg-players-count");
 
-  const elOpponent = document.getElementById("tg-opponent");
-  const elSeries = document.getElementById("tg-series");
-  const elNextGame = document.getElementById("tg-next-game");
-  const elNeedMove = document.getElementById("tg-need-move");
+  const elRing = $("tg-ring");
+  const elRingTime = $("tg-ring-time");
 
-  const rpsButtons = Array.from(document.querySelectorAll(".tg-rps-btn[data-move]"));
+  const elGroupTitle = $("tg-group-title");
+  const elGroupMembers = $("tg-group-members");
+  const elGroupLoading = $("tg-group-loading");
 
-  function setStatus(text) {
-    if (elStatus) elStatus.textContent = text;
+  const elGame = $("tg-game");
+  const elMyPick = $("tg-my-pick");
+  const elOpPick = $("tg-op-pick");
+  const elSeries = $("tg-series");
+  const elGameNo = $("tg-game-no");
+  const elTurn = $("tg-turn");
+
+  const moves = Array.from(document.querySelectorAll(".tg-move[data-move]"));
+
+  const elErrText = $("tg-error-text");
+  const elBackFind = $("tg-back-find");
+
+  const menuBtns = ["tg-menu-1", "tg-menu-2", "tg-menu-3"].map($).filter(Boolean);
+
+  function showScreen(which) {
+    const all = [scrFind, scrReg, scrWait, scrGroup, scrError];
+    for (const s of all) s.hidden = true;
+    which.hidden = false;
   }
 
-  function setPolling(flag) {
-    if (elPolling) elPolling.textContent = `Polling: ${flag ? "on" : "off"}`;
-  }
+  function setTournamentHeader(state) {
+    const name = state?.tournament_name || (tournamentId ? `#${tournamentId}` : "—");
+    const org = state?.organizer || "—";
 
-  function setPills(state) {
-    if (elTournamentPill) elTournamentPill.textContent = tournamentId ? `ID: ${tournamentId}` : "ID: —";
-    if (elPhasePill) elPhasePill.textContent = `phase: ${state?.phase || "—"}`;
-
-    const stNo = state?.stage_no ?? "—";
-    const stStatus = state?.stage_status ?? "—";
-    if (elStagePill) elStagePill.textContent = `stage: ${stNo} • ${stStatus}`;
-
-    const gNo = state?.group?.group_no ?? "—";
-    const gId = state?.group?.id ?? "—";
-    if (elGroupPill) elGroupPill.textContent = `group: ${gNo} (id ${gId})`;
-
-    const mid = state?.match?.id ?? "—";
-    if (elMatchPill) elMatchPill.textContent = `match: ${mid}`;
-  }
-
-  function setSubtitle(state) {
-    if (!elSubtitle) return;
-    const stNo = state?.stage_no ?? null;
-    const gNo = state?.group?.group_no ?? null;
-    if (state?.phase === "group" && stNo && gNo) {
-      elSubtitle.textContent = `Stage ${stNo} • Group ${gNo}`;
-      return;
-    }
-    if (state?.phase === "waiting_group" && stNo) {
-      elSubtitle.textContent = `Stage ${stNo} • Формування груп`;
-      return;
-    }
-    if (state?.phase === "registration" && stNo) {
-      elSubtitle.textContent = `Stage ${stNo} • Реєстрація`;
-      return;
-    }
-    elSubtitle.textContent = "Груповий етап";
+    if (elTName) elTName.textContent = name;
+    if (elTMeta) elTMeta.textContent = `Організатор: ${org}`;
   }
 
   function myTgId() {
@@ -101,149 +80,174 @@
     return Number.isFinite(n) ? n : null;
   }
 
-  function renderStandings(state) {
-    if (!elStandingsBody) return;
-
-    const rows = state?.standings || [];
-    if (!rows.length) {
-      elStandingsBody.innerHTML = `<tr><td colspan="7" class="tg-empty">Поки немає даних…</td></tr>`;
-      return;
-    }
-
-    const me = myTgId();
-
-    elStandingsBody.innerHTML = rows.map((r) => {
-      const isMe = me && Number(r.tg_user_id) === Number(me);
-      const style = isMe ? ` style="font-weight:700;background:rgba(0,0,0,0.03);"` : "";
-      return `
-        <tr${style}>
-          <td>${r.seat}</td>
-          <td>${r.tg_user_id}</td>
-          <td>${r.points}</td>
-          <td>${r.wins}</td>
-          <td>${r.draws}</td>
-          <td>${r.losses}</td>
-          <td>${r.matches_played}</td>
-        </tr>
-      `;
-    }).join("");
+  function fmtTime(sec) {
+    if (sec == null) return "—";
+    const s = Math.max(0, Number(sec) | 0);
+    const mm = String(Math.floor(s / 60)).padStart(2, "0");
+    const ss = String(s % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
   }
 
   function setMovesEnabled(flag) {
-    for (const b of rpsButtons) b.disabled = !flag;
+    for (const b of moves) b.disabled = !flag;
   }
 
-  function renderMatch(state) {
-    const m = state?.match || null;
+  function moveToEmoji(m) {
+    if (m === "rock") return "🪨";
+    if (m === "paper") return "📄";
+    if (m === "scissors") return "✂️";
+    return "—";
+  }
 
-    if (!m) {
-      if (elOpponent) elOpponent.textContent = "—";
-      if (elSeries) elSeries.textContent = "0 : 0";
-      if (elNextGame) elNextGame.textContent = "—";
-      if (elNeedMove) elNeedMove.textContent = "—";
+  function renderRegistration(state) {
+    showScreen(scrReg);
+    setTournamentHeader(state);
+
+    const joined = !!state?.joined;
+    const sec = state?.seconds_to_start;
+
+    if (sec != null && elStartBlock) {
+      elStartBlock.hidden = false;
+      if (elStartIn) elStartIn.textContent = fmtTime(sec);
+    } else if (elStartBlock) {
+      elStartBlock.hidden = true;
+    }
+
+    if (elJoin) {
+      elJoin.disabled = joined;
+      elJoin.textContent = joined ? "✅ Ви приєднались" : "✅ Join";
+    }
+  }
+
+  function renderWaiting(state) {
+    showScreen(scrWait);
+    setTournamentHeader(state);
+
+    const count = state?.players_count;
+    if (count != null) {
+      elPlayersCountBlock.hidden = false;
+      elPlayersCount.textContent = String(count);
+    } else {
+      elPlayersCountBlock.hidden = true;
+    }
+
+    const sec = state?.seconds_to_start;
+    if (elRingTime) elRingTime.textContent = fmtTime(sec);
+
+    // progress ring (якщо є start_total_sec)
+    const total = state?.start_total_sec;
+    if (elRing) {
+      let p = 0;
+      if (sec != null && total != null && Number(total) > 0) {
+        p = Math.max(0, Math.min(1, 1 - (Number(sec) / Number(total))));
+      }
+      elRing.style.setProperty("--p", String(p));
+    }
+  }
+
+  function renderGroup(state) {
+    showScreen(scrGroup);
+    setTournamentHeader(state);
+
+    // group list
+    const gNo = state?.group?.group_no ?? "—";
+    if (elGroupTitle) elGroupTitle.textContent = `Ваша група № ${gNo}`;
+
+    const members = state?.group_members || [];
+    const me = myTgId();
+
+    if (!members.length) {
+      elGroupMembers.innerHTML = `<li>—</li>`;
+    } else {
+      elGroupMembers.innerHTML = members.map((m) => {
+        const isMe = me && Number(m.tg_user_id) === Number(me);
+        const cls = isMe ? ` class="me"` : "";
+        // тимчасово показуємо tg_id як "@123", поки не підтягнемо username з БД
+        const label = m.username ? `@${m.username}` : `@${m.tg_user_id}`;
+        return `<li${cls}>${label}</li>`;
+      }).join("");
+    }
+
+    // match/game
+    const match = state?.match || null;
+
+    if (!match) {
+      elGame.hidden = true;
+      elGroupLoading.hidden = false;
       setMovesEnabled(false);
       lastMatchId = null;
-      lastNeedMove = null;
+      lastNeedMove = false;
       return;
     }
 
-    lastMatchId = Number(m.id);
+    elGroupLoading.hidden = true;
+    elGame.hidden = false;
 
-    if (elOpponent) elOpponent.textContent = String(m.opponent_tg_user_id ?? "—");
-    if (elNextGame) elNextGame.textContent = `${m.next_game_no ?? "—"} / ${m.series_total ?? "—"}`;
+    lastMatchId = Number(match.id);
+    lastNeedMove = !!match.need_move;
 
     // series score relative to "you"
-    const youP1 = !!m.you_are_p1;
-    const p1 = Number(m.p1_series_points ?? 0);
-    const p2 = Number(m.p2_series_points ?? 0);
+    const youP1 = !!match.you_are_p1;
+    const p1 = Number(match.p1_series_points ?? 0);
+    const p2 = Number(match.p2_series_points ?? 0);
     const myScore = youP1 ? p1 : p2;
     const opScore = youP1 ? p2 : p1;
+
     if (elSeries) elSeries.textContent = `${myScore} : ${opScore}`;
+    if (elGameNo) elGameNo.textContent = `Гра ${match.next_game_no ?? "—"} / ${match.series_total ?? "—"}`;
 
-    const need = !!m.need_move;
-    lastNeedMove = need;
-    if (elNeedMove) elNeedMove.textContent = need ? "твій" : "очікуй";
+    // кружечки
+    if (elMyPick) elMyPick.textContent = moveToEmoji(match.my_move);
+    if (elOpPick) elOpPick.textContent = moveToEmoji(match.opponent_move);
 
-    setMovesEnabled(need);
+    // turn
+    if (elTurn) elTurn.textContent = lastNeedMove ? "Твій хід" : "Очікуй хід суперника";
+    setMovesEnabled(lastNeedMove);
   }
 
-  function setActionsByPhase(phase) {
-    // join/leave доступність тільки на рівні UI (бек все одно захищений)
-    if (phase === "registration") {
-      if (elJoin) elJoin.disabled = false;
-      if (elLeave) elLeave.disabled = false;
-      return;
-    }
-    if (phase === "waiting_group") {
-      if (elJoin) elJoin.disabled = true;
-      if (elLeave) elLeave.disabled = true;
-      return;
-    }
-    if (phase === "group") {
-      if (elJoin) elJoin.disabled = true;
-      if (elLeave) elLeave.disabled = true;
-      return;
-    }
-
-    // дефолт
-    if (elJoin) elJoin.disabled = false;
-    if (elLeave) elLeave.disabled = false;
+  function renderError(err) {
+    showScreen(scrError);
+    if (elErrText) elErrText.textContent = JSON.stringify(err, null, 2);
   }
 
-  function handlePhaseEvents(state) {
-    const phase = state?.phase || null;
-
-    if (phase !== lastPhase) lastPhase = phase;
-
-    Events.onPhase(state);
-
-    if (phase === "registration") {
-      Events.onRegistration(state);
-      return;
-    }
-    if (phase === "waiting_group") {
-      Events.onWaitingGroup(state);
-      return;
-    }
-    if (phase === "group") {
-      Events.onGroup(state);
-      return;
-    }
-
-    Events.onNeedJoin(state);
+  // ---- Core ----
+  function readTidFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const tid = p.get("tournament_id");
+    return tid ? String(tid) : null;
   }
 
-  // ---------- Core ----------
+  function setUrlTid(tid) {
+    const p = new URLSearchParams(window.location.search);
+    if (tid) p.set("tournament_id", String(tid));
+    else p.delete("tournament_id");
+    const newUrl = `${window.location.pathname}?${p.toString()}`;
+    window.history.replaceState({}, "", newUrl);
+  }
+
+  function setTid(tid) {
+    tournamentId = tid ? String(tid) : null;
+    if (tournamentId) setUrlTid(tournamentId);
+  }
+
   async function pollState() {
     if (!tournamentId) return;
 
     const res = await window.TournamentApi.state(tournamentId);
     if (!res.ok) {
-      Events.onError(res);
-      setStatus(`⚠️ ${res.error || "error"}`);
-      setPolling(false);
-      setMovesEnabled(false);
+      renderError(res);
+      stopPolling();
       return;
     }
 
-    setPolling(true);
-
-    setPills(res);
-    setSubtitle(res);
-
     const phase = res.phase || "—";
-    setActionsByPhase(phase);
 
-    // human status
-    if (phase === "registration") setStatus("🟢 Реєстрація відкрита. Можеш приєднатись (Join).");
-    else if (phase === "waiting_group") setStatus("⏳ Етап стартував. Чекаємо формування груп…");
-    else if (phase === "group") setStatus("🏁 Груповий етап. Грай свій матч.");
-    else setStatus("ℹ️ Вкажи tournament_id і натисни Join.");
+    if (phase === "registration") return renderRegistration(res);
+    if (phase === "waiting_group") return renderWaiting(res);
+    if (phase === "group") return renderGroup(res);
 
-    renderStandings(res);
-    renderMatch(res);
-
-    handlePhaseEvents(res);
+    // fallback: якщо бек вернув щось інше
+    renderRegistration(res);
   }
 
   function startPolling() {
@@ -253,135 +257,80 @@
   }
 
   function stopPolling() {
-    if (pollTimer) {
-      clearInterval(pollTimer);
-      pollTimer = null;
-    }
-    setPolling(false);
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = null;
   }
 
-  function _readTidFromUrl() {
-    const p = new URLSearchParams(window.location.search);
-    const tid = p.get("tournament_id");
-    return tid ? String(tid) : null;
-  }
-
-  function _setUrlTid(tid) {
-    const p = new URLSearchParams(window.location.search);
-    if (tid) p.set("tournament_id", String(tid));
-    else p.delete("tournament_id");
-    const newUrl = `${window.location.pathname}?${p.toString()}`;
-    window.history.replaceState({}, "", newUrl);
-  }
-
-  function setTournamentId(tid) {
-    tournamentId = tid ? String(tid) : null;
-    if (elTournamentPill) elTournamentPill.textContent = tournamentId ? `ID: ${tournamentId}` : "ID: —";
-    if (tournamentId) _setUrlTid(tournamentId);
-  }
-
-  async function join(joinCode) {
-    if (!tournamentId) return Events.onError({ ok: false, error: "no_tournament_id" });
-
-    setStatus("⏳ Join…");
-    const res = await window.TournamentApi.join(tournamentId, joinCode);
+  async function joinNow() {
+    if (!tournamentId) return;
+    const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
+    const res = await window.TournamentApi.join(tournamentId, code || "");
     if (!res.ok) {
-      Events.onError(res);
-      setStatus(`⚠️ join: ${res.error || "error"}`);
+      renderError(res);
       return;
     }
-    setStatus("✅ Joined. Очікуємо старт/групи…");
     startPolling();
   }
 
-  async function leave() {
-    if (!tournamentId) return Events.onError({ ok: false, error: "no_tournament_id" });
-
-    setStatus("⏳ Leave…");
-    const res = await window.TournamentApi.leave(tournamentId);
-    if (!res.ok) {
-      Events.onError(res);
-      setStatus(`⚠️ leave: ${res.error || "error"}`);
-      return;
-    }
-    setStatus("✅ Left.");
-    pollState();
-  }
-
   async function sendMove(move) {
-    if (!tournamentId) return Events.onError({ ok: false, error: "no_tournament_id" });
-    if (!lastMatchId) return Events.onError({ ok: false, error: "no_match" });
-    if (!lastNeedMove) return Events.onError({ ok: false, error: "not_your_turn" });
+    if (!tournamentId) return;
+    if (!lastMatchId) return;
+    if (!lastNeedMove) return;
 
     setMovesEnabled(false);
-    setStatus("⏳ Хід відправлено…");
-
     const res = await window.TournamentApi.move(tournamentId, lastMatchId, move);
     if (!res.ok) {
-      Events.onError(res);
-      setStatus(`⚠️ move: ${res.error || "error"}`);
-      pollState();
+      renderError(res);
       return;
     }
-
-    setStatus("✅ Хід прийнято. Оновлюємо стан…");
     pollState();
   }
 
-  // ---------- Bind UI ----------
+  function goMenu() {
+    window.location.href = "./index.html";
+  }
+
   function bindUi() {
-    // open
     if (elOpen) {
       elOpen.addEventListener("click", () => {
-        const v = elInputTid?.value ? String(elInputTid.value).trim() : "";
-        if (!v) {
-          setStatus("⚠️ Вкажи tournament_id");
-          return;
-        }
-        setTournamentId(v);
-        setStatus("✅ Турнір відкрито. Натисни Join.");
+        const v = elTidInput?.value ? String(elTidInput.value).trim() : "";
+        if (!v) return;
+        setTid(v);
         startPolling();
       });
     }
 
-    // join
-    if (elJoin) {
-      elJoin.addEventListener("click", () => {
-        const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
-        join(code || null);
-      });
-    }
+    if (elJoin) elJoin.addEventListener("click", () => joinNow());
 
-    // leave
-    if (elLeave) {
-      elLeave.addEventListener("click", () => leave());
-    }
-
-    // moves
-    for (const b of rpsButtons) {
+    for (const b of moves) {
       b.addEventListener("click", () => sendMove(b.dataset.move));
+    }
+
+    for (const b of menuBtns) b.addEventListener("click", goMenu);
+
+    if (elBackFind) {
+      elBackFind.addEventListener("click", () => {
+        stopPolling();
+        setTid(null);
+        setTournamentHeader(null);
+        showScreen(scrFind);
+      });
     }
   }
 
-  // ---------- Public ----------
-  window.TournamentScreen = {
-    start: (tid) => {
-      setTournamentId(tid || _readTidFromUrl());
-      bindUi();
-
-      // якщо tid є — стартуємо polling одразу
-      if (tournamentId) startPolling();
-      else setStatus("Вкажи tournament_id і натисни “Відкрити”.");
-    },
-    join,
-    leave,
-    sendMove,
-    stop: stopPolling,
-    events: Events,
-  };
-
-  // авто-старт
   document.addEventListener("DOMContentLoaded", () => {
-    window.TournamentScreen.start(_readTidFromUrl());
+    bindUi();
+
+    // init: tid з URL
+    const tid = readTidFromUrl();
+    if (tid && elTidInput) elTidInput.value = tid;
+
+    if (tid) {
+      setTid(tid);
+      startPolling();
+    } else {
+      showScreen(scrFind);
+      setTournamentHeader(null);
+    }
   });
 })();
