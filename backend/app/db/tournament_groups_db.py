@@ -37,6 +37,14 @@ def get_tournament(tournament_id: int) -> dict | None:
 # ---------------------------
 # Stage
 # ---------------------------
+def is_stage_player(stage_id: int, tg_user_id: int) -> bool:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM tournament_stage_players WHERE stage_id=%s AND tg_user_id=%s LIMIT 1",
+                (stage_id, tg_user_id),
+            )
+            return cur.fetchone() is not None
 
 def get_stage(tournament_id: int, stage_no: int) -> dict | None:
     with get_conn() as conn:
