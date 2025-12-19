@@ -217,6 +217,13 @@
     return tid ? String(tid) : null;
   }
 
+  // ✅ NEW: автопідстановка join_code з URL (плюс fallback на старий tagid)
+  function readJoinCodeFromUrl() {
+    const p = new URLSearchParams(window.location.search);
+    const code = p.get("join_code") || p.get("tagid");
+    return code ? String(code) : null;
+  }
+
   function setUrlTid(tid) {
     const p = new URLSearchParams(window.location.search);
     if (tid) p.set("tournament_id", String(tid));
@@ -324,6 +331,10 @@
     // init: tid з URL
     const tid = readTidFromUrl();
     if (tid && elTidInput) elTidInput.value = tid;
+
+    // ✅ NEW: join_code з URL → автозаповнити поле
+    const joinCode = readJoinCodeFromUrl();
+    if (joinCode && elJoinCode) elJoinCode.value = joinCode;
 
     if (tid) {
       setTid(tid);
