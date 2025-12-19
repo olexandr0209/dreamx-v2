@@ -24,6 +24,7 @@ router = Router()
 
 APP_TZ = os.getenv("APP_TZ", "Europe/Berlin")
 WEBAPP_URL = os.getenv("WEBAPP_URL", "").strip()
+GAME_BOT_USERNAME = os.getenv("GAME_BOT_USERNAME", "").strip().lstrip("@")  # ✅ NEW
 
 class CreateTournament(StatesGroup):
     title = State()
@@ -371,7 +372,7 @@ async def tournament_link(c: CallbackQuery):
         await c.answer("not found", show_alert=True)
         return
 
-    # ✅ NEW: якщо раптом у старого турніру пустий join_code — згенерувати та зберегти
+    # ✅ якщо у старого турніру пустий join_code — згенерувати та зберегти
     join_code = row.get("join_code")
     if not join_code:
         code = _gen_join_code()
@@ -380,22 +381,32 @@ async def tournament_link(c: CallbackQuery):
         execute("UPDATE tournaments SET join_code=%s, updated_at=NOW() WHERE id=%s", (code, tid))
         join_code = code
 
-    if WEBAPP_URL:
-        # ✅ NEW: відкриваємо одразу tournament.html і передаємо tournament_id + join_code
-        base = WEBAPP_URL.rstrip("/")
-        if base.endswith(".html"):
-            base = base.rsplit("/", 1)[0]
-        qs = urlencode({"tournament_id": tid, "join_code": join_code})
-        link = f"{base}/tournament.html?{qs}"
-    else:
-        link = "(WEBAPP_URL не заданий у ENV)"
+    # ✅ NEW: 1) найнадійніше — Telegram startapp deep link (працює і для нових, і для старих юзерів)
+    link = None
+    if GAME_BOT_USERNAME:
+        # payload: t_<tid>_<join_code>
+        payload = f"t_{tid}_{join_code}"
+        link = f"https://t.me/{GAME_BOT_USERNAME}?startapp={payload}"
+
+    # ✅ NEW: 2) fallback — прямий лінк на tournament.html
+    if not link:
+        if WEBAPP_URL:
+            base = WEBAPP_URL.rstrip("/")
+            # якщо раптом WEBAPP_URL вказаний як .../index.html або .../tournament.html — обрізаємо файл
+            if base.endswith(".html"):
+                base = base.rsplit("/", 1)[0]
+            qs = urlencode({"tournament_id": tid, "join_code": join_code})
+            link = f"{base}/tournament.html?{qs}"
+        else:
+            link = "(WEBAPP_URL не заданий у ENV)"
 
     extra = ""
     if row["access_type"] == "private":
         extra = f"\n🔒 Код: {join_code}"
 
     await c.message.edit_text(
-        f"🔗 Посилання для гравців:\n{link}{extra}\n\n(Гравці відкривають tournament.html і приєднуються до турніру.)",
+        f"🔗 Посилання для гравців:\n{link}{extra}\n\n"
+        "(Якщо це startapp-лінк — Telegram відкриє WebApp, а той вже відкриє турнір.)",
         reply_markup=kb_tournament_actions(tid),
     )
     await c.answer()
