@@ -1,4 +1,4 @@
-# conection.py
+# connection.py
 
 import os
 import psycopg2
