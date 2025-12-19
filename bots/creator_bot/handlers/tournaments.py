@@ -1,3 +1,5 @@
+# tournaments.py
+
 import os
 import re
 import secrets
