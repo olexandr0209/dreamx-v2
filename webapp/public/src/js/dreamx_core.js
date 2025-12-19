@@ -7,6 +7,15 @@ window.DreamX = window.DreamX || {};
 const DREAMX_LS_TG_KEY = "dreamx_tg_user_id";
 
 window.DreamX.getTgUserId = function () {
+
+  // ✅ 0️⃣ TEMP: query ?tg_user_id=... (для фейкових тестів)
+  const p = new URLSearchParams(window.location.search);
+  const q = p.get("tg_user_id");
+  if (q) {
+    localStorage.setItem(DREAMX_LS_TG_KEY, q);
+    return q;
+  }
+
   // 1️⃣ Telegram WebApp (основний шлях)
   try {
     const tg = window.Telegram?.WebApp;
@@ -21,14 +30,6 @@ window.DreamX.getTgUserId = function () {
   // 2️⃣ localStorage (головний фікс проблеми)
   const cached = localStorage.getItem(DREAMX_LS_TG_KEY);
   if (cached) return cached;
-
-  // 3️⃣ fallback: query ?tg_user_id=...
-  const p = new URLSearchParams(window.location.search);
-  const q = p.get("tg_user_id");
-  if (q) {
-    localStorage.setItem(DREAMX_LS_TG_KEY, q);
-    return q;
-  }
 
   return null;
 };
