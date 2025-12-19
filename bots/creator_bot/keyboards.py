@@ -1,3 +1,5 @@
+# keyboards.py
+
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 def kb_main():
