@@ -5,6 +5,7 @@ import re
 import secrets
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
+from urllib.parse import urlencode  # ✅ NEW (тільки для формування URL)
 
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
@@ -380,8 +381,12 @@ async def tournament_link(c: CallbackQuery):
         join_code = code
 
     if WEBAPP_URL:
-        # ✅ NEW: тепер лінк не по id, а по tagid=join_code
-        link = f"{WEBAPP_URL}?tagid={join_code}"
+        # ✅ NEW: відкриваємо одразу tournament.html і передаємо tournament_id + join_code
+        base = WEBAPP_URL.rstrip("/")
+        if base.endswith(".html"):
+            base = base.rsplit("/", 1)[0]
+        qs = urlencode({"tournament_id": tid, "join_code": join_code})
+        link = f"{base}/tournament.html?{qs}"
     else:
         link = "(WEBAPP_URL не заданий у ENV)"
 
@@ -390,7 +395,7 @@ async def tournament_link(c: CallbackQuery):
         extra = f"\n🔒 Код: {join_code}"
 
     await c.message.edit_text(
-        f"🔗 Посилання для гравців:\n{link}{extra}\n\n(Гравці відкривають WebApp і приєднуються до турніру.)",
+        f"🔗 Посилання для гравців:\n{link}{extra}\n\n(Гравці відкривають tournament.html і приєднуються до турніру.)",
         reply_markup=kb_tournament_actions(tid),
     )
     await c.answer()
