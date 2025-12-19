@@ -14,6 +14,10 @@
   let lastMatchId = null;
   let lastNeedMove = false;
 
+  // ✅ NEW: авто-join (тільки 1 раз)
+  let autoJoinWanted = false;
+  let autoJoinDone = false;
+
   // ---- DOM ----
   const $ = (id) => document.getElementById(id);
 
@@ -134,7 +138,6 @@
     const sec = state?.seconds_to_start;
     if (elRingTime) elRingTime.textContent = fmtTime(sec);
 
-    // progress ring (якщо є start_total_sec)
     const total = state?.start_total_sec;
     if (elRing) {
       let p = 0;
@@ -149,7 +152,6 @@
     showScreen(scrGroup);
     setTournamentHeader(state);
 
-    // group list
     const gNo = state?.group?.group_no ?? "—";
     if (elGroupTitle) elGroupTitle.textContent = `Ваша група № ${gNo}`;
 
@@ -162,13 +164,11 @@
       elGroupMembers.innerHTML = members.map((m) => {
         const isMe = me && Number(m.tg_user_id) === Number(me);
         const cls = isMe ? ` class="me"` : "";
-        // тимчасово показуємо tg_id як "@123", поки не підтягнемо username з БД
         const label = m.username ? `@${m.username}` : `@${m.tg_user_id}`;
         return `<li${cls}>${label}</li>`;
       }).join("");
     }
 
-    // match/game
     const match = state?.match || null;
 
     if (!match) {
@@ -186,7 +186,6 @@
     lastMatchId = Number(match.id);
     lastNeedMove = !!match.need_move;
 
-    // series score relative to "you"
     const youP1 = !!match.you_are_p1;
     const p1 = Number(match.p1_series_points ?? 0);
     const p2 = Number(match.p2_series_points ?? 0);
@@ -196,11 +195,9 @@
     if (elSeries) elSeries.textContent = `${myScore} : ${opScore}`;
     if (elGameNo) elGameNo.textContent = `Гра ${match.next_game_no ?? "—"} / ${match.series_total ?? "—"}`;
 
-    // кружечки
     if (elMyPick) elMyPick.textContent = moveToEmoji(match.my_move);
     if (elOpPick) elOpPick.textContent = moveToEmoji(match.opponent_move);
 
-    // turn
     if (elTurn) elTurn.textContent = lastNeedMove ? "Твій хід" : "Очікуй хід суперника";
     setMovesEnabled(lastNeedMove);
   }
@@ -217,11 +214,34 @@
     return tid ? String(tid) : null;
   }
 
-  // ✅ NEW: автопідстановка join_code з URL (плюс fallback на старий tagid)
+  // ✅ NEW: можна передавати join_code в URL
   function readJoinCodeFromUrl() {
     const p = new URLSearchParams(window.location.search);
-    const code = p.get("join_code") || p.get("tagid");
-    return code ? String(code) : null;
+    const code = p.get("join_code") || p.get("code") || p.get("tagid");
+    return code ? String(code).trim() : "";
+  }
+
+  // ✅ NEW: читаємо Telegram start_param (для startapp)
+  function readStartParam() {
+    try {
+      return window.Telegram?.WebApp?.initDataUnsafe?.start_param || "";
+    } catch (e) {
+      return "";
+    }
+  }
+
+  // ✅ NEW: формат payload = t_<tid>_<join_code>
+  function parseTournamentStartParam(sp) {
+    if (!sp) return null;
+    if (!String(sp).startsWith("t_")) return null;
+    const parts = String(sp).split("_");
+    if (parts.length < 3) return null;
+
+    const tid = parts[1];
+    const code = parts.slice(2).join("_"); // на всяк випадок
+    if (!tid) return null;
+
+    return { tid: String(tid), joinCode: String(code || "") };
   }
 
   function setUrlTid(tid) {
@@ -249,11 +269,26 @@
 
     const phase = res.phase || "—";
 
+    // ✅ NEW: авто-join (один раз) тільки коли бачимо реєстрацію і ще не joined
+    if (phase === "registration" && autoJoinWanted && !autoJoinDone && !res.joined) {
+      autoJoinDone = true;
+
+      const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
+      const j = await window.TournamentApi.join(tournamentId, code || "");
+      if (!j.ok) {
+        renderError(j);
+        stopPolling();
+        return;
+      }
+
+      // не робимо рекурсій — просто дочекаємось наступного poll
+      return;
+    }
+
     if (phase === "registration") return renderRegistration(res);
     if (phase === "waiting_group") return renderWaiting(res);
     if (phase === "group") return renderGroup(res);
 
-    // fallback: якщо бек вернув щось інше
     renderRegistration(res);
   }
 
@@ -320,6 +355,8 @@
         stopPolling();
         setTid(null);
         setTournamentHeader(null);
+        autoJoinWanted = false;
+        autoJoinDone = false;
         showScreen(scrFind);
       });
     }
@@ -328,13 +365,30 @@
   document.addEventListener("DOMContentLoaded", () => {
     bindUi();
 
-    // init: tid з URL
-    const tid = readTidFromUrl();
-    if (tid && elTidInput) elTidInput.value = tid;
+    // 1) URL params
+    let tid = readTidFromUrl();
+    const urlJoinCode = readJoinCodeFromUrl();
 
-    // ✅ NEW: join_code з URL → автозаповнити поле
-    const joinCode = readJoinCodeFromUrl();
-    if (joinCode && elJoinCode) elJoinCode.value = joinCode;
+    // 2) Telegram start_param (startapp)
+    if (!tid) {
+      const sp = readStartParam();
+      const parsed = parseTournamentStartParam(sp);
+      if (parsed?.tid) {
+        tid = parsed.tid;
+        if (elJoinCode && parsed.joinCode) elJoinCode.value = parsed.joinCode;
+        autoJoinWanted = true;
+      }
+    } else {
+      // якщо tid є в URL — теж можемо авто-join (якщо join_code є)
+      if (urlJoinCode) {
+        autoJoinWanted = true;
+      }
+    }
+
+    // заповнюємо поле join_code з URL якщо є (і не перезатерли з start_param)
+    if (elJoinCode && urlJoinCode && !elJoinCode.value) elJoinCode.value = urlJoinCode;
+
+    if (tid && elTidInput) elTidInput.value = tid;
 
     if (tid) {
       setTid(tid);
