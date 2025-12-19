@@ -34,4 +34,17 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = "./pvp.html" + qs;
     });
   }
+
+  // ===== TOURNAMENTS (group stage) =====
+  const btnT = document.getElementById("btn-play-tournament");
+  if (btnT) {
+    btnT.addEventListener("click", () => {
+      try {
+        window.DreamX?.getUser?.();
+      } catch (e) {}
+
+      const qs = window.location.search || "";
+      window.location.href = "./tournament.html" + qs;
+    });
+  }
 });
