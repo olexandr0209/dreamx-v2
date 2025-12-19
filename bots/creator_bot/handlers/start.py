@@ -1,3 +1,5 @@
+# bots/creator_bot/handlers/start.py
+
 import os
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
