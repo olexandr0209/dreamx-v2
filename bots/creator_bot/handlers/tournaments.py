@@ -1,4 +1,4 @@
-# tournaments.py
+# bots/creator_bot/handlers/tournaments.py
 
 import os
 import re
