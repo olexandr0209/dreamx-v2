@@ -76,19 +76,24 @@
 
         <!-- ✅ PUBLIC DETAILS (UI stub) -->
         <section class="tg-screen" id="scr-public-details" hidden>
+
+          <!-- HEAD -->
           <section class="tg-public-head">
             <div class="tg-public-title" id="tg-public-title">—</div>
             <div class="tg-public-org">
               Організатор: <span class="tg-public-org__u" id="tg-public-organizer">@—</span>
             </div>
 
-            <!-- ✅ NEW: статус (після 30s тут буде “Формуються групи”) -->
+            <!-- ✅ status: “Реєстрація завершена! Формуються групи” / “Твоя група 1а” -->
             <div class="tg-public-status" id="tg-public-status" hidden>—</div>
+
+            <!-- ✅ small circle on top (показуємо коли група готова / перед переходом у game) -->
+            <div class="tg-public-bubble" id="tg-public-bubble" hidden>●</div>
           </section>
 
           <section class="tg-public-body">
 
-            <!-- ✅ NEW: обгорнули таймер в block з id, щоб ховати -->
+            <!-- countdown ring block (ховаємо після 30s) -->
             <div class="tg-public-timer" id="tg-public-timer-block">
               <div class="tg-public-timer__ring tg-ring" id="tg-public-ring" style="--p:0;">
                 <div class="tg-ring__inner">
@@ -103,16 +108,25 @@
 
             <section class="tg-block">
               <div class="tg-block__top">
-                <div class="tg-block__title">Учасники</div>
+                <div class="tg-block__title" id="tg-public-players-title">Учасники</div>
                 <div class="tg-badge tg-badge--soft" id="tg-public-count">0</div>
               </div>
 
               <div class="tg-public-players">
                 <div class="tg-public-players__list" id="tg-public-players"></div>
-                <div class="tg-footnote">Список оновлюється онлайн (заглушка).</div>
+                <div class="tg-footnote" id="tg-public-players-note">Список оновлюється онлайн (заглушка).</div>
               </div>
             </section>
 
+          </section>
+        </section>
+
+        <!-- ✅ PUBLIC GAME STUB -->
+        <section class="tg-screen" id="scr-public-game" hidden>
+          <section class="tg-game-stub">
+            <div class="tg-game-stub__badge">DX</div>
+            <div class="tg-game-stub__title">Заглушка ігрового екрану</div>
+            <div class="tg-game-stub__sub">Далі підключимо бекенд і реальний матч.</div>
           </section>
         </section>
 
