@@ -1,21 +1,17 @@
 /* tournament.css — тільки для турнірного екрана */
 
-.dx-tournament {
-  padding: 0;
-}
+.dx-tournament { padding: 0; }
 
 .tg-topbar {
   background: #fff;
-  border-bottom: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
-.tg-topbar__inner {
-  justify-content: center;
-}
+.tg-topbar__inner { justify-content: center; }
 
 .tg-topbar__title {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 22px;
+  font-weight: 700;
   letter-spacing: 0.2px;
 }
 
@@ -25,20 +21,17 @@
   padding: 22px 18px 20px;
 }
 
-.tg-hero {
-  text-align: left;
-  margin-bottom: 16px;
-}
+.tg-hero { text-align: left; margin-bottom: 16px; }
 
 .tg-hero__kicker {
-  font-size: 14px;
+  font-size: 13px;
   color: rgba(0,0,0,0.55);
   margin-bottom: 6px;
 }
 
 .tg-hero__name {
   font-size: 34px;
-  font-weight: 600;
+  font-weight: 800;
   line-height: 1.05;
 }
 
@@ -53,8 +46,9 @@
 .tg-panel {
   background: #fff;
   border: 1px solid rgba(0,0,0,0.10);
-  border-radius: 12px;
+  border-radius: 14px;
   padding: 14px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
 
 .tg-label {
@@ -65,8 +59,8 @@
 
 .tg-input {
   width: 100%;
-  height: 44px;
-  border-radius: 10px;
+  height: 46px;
+  border-radius: 12px;
   border: 1px solid rgba(0,0,0,0.14);
   padding: 0 12px;
   outline: none;
@@ -74,18 +68,12 @@
   font-size: 14px;
 }
 
-.tg-input:focus {
-  border-color: rgba(0,0,0,0.30);
-}
+.tg-input:focus { border-color: rgba(0,0,0,0.35); }
 
 .tg-hint {
   margin-top: 6px;
   font-size: 12px;
   color: rgba(0,0,0,0.55);
-}
-
-.tg-mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
 .tg-gap { height: 14px; }
@@ -94,24 +82,30 @@
 .tg-btn {
   width: 100%;
   height: 52px;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.25);
-  background: #d9d9d9;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.20);
+  background: #f2f2f2;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
 .tg-btn:active { transform: translateY(1px); }
 
 .tg-btn--primary {
-  background: #d9d9d9;
-  border-color: rgba(0,0,0,0.55);
+  background: #111;
+  color: #fff;
+  border-color: rgba(0,0,0,0.85);
+}
+
+.tg-btn--primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .tg-big {
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 800;
   margin-top: 6px;
 }
 
@@ -121,9 +115,7 @@
   color: rgba(0,0,0,0.55);
 }
 
-.tg-timer {
-  margin-top: 10px;
-}
+.tg-timer { margin-top: 10px; }
 
 .tg-timer__label {
   font-size: 12px;
@@ -132,18 +124,16 @@
 
 .tg-timer__value {
   font-size: 40px;
-  font-weight: 600;
+  font-weight: 900;
   margin-top: 6px;
 }
 
 /* Players count */
-.tg-count {
-  margin-top: 14px;
-}
+.tg-count { margin-top: 14px; }
 
 .tg-count__num {
   font-size: 54px;
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1;
 }
 
@@ -153,7 +143,7 @@
   color: rgba(0,0,0,0.55);
 }
 
-/* Ring timer (progress via --p 0..1) */
+/* Ring timer */
 .tg-ring-wrap {
   display: flex;
   justify-content: center;
@@ -166,7 +156,7 @@
   height: 136px;
   border-radius: 999px;
   background:
-    conic-gradient(rgba(0,0,0,0.22) calc(var(--p) * 1turn), rgba(0,0,0,0.08) 0);
+    conic-gradient(rgba(0,0,0,0.85) calc(var(--p) * 1turn), rgba(0,0,0,0.08) 0);
   display: grid;
   place-items: center;
 }
@@ -182,28 +172,20 @@
   border: 1px solid rgba(0,0,0,0.10);
 }
 
-.tg-ring__label {
-  font-size: 11px;
-  color: rgba(0,0,0,0.55);
-}
-
-.tg-ring__value {
-  font-size: 24px;
-  font-weight: 700;
-  margin-top: 4px;
-}
+.tg-ring__label { font-size: 11px; color: rgba(0,0,0,0.55); }
+.tg-ring__value { font-size: 24px; font-weight: 900; margin-top: 4px; }
 
 /* Group card */
 .tg-card {
-  background: #d9d9d9;
-  border-radius: 10px;
+  background: #f2f2f2;
+  border-radius: 14px;
   padding: 16px;
-  border: 1px solid rgba(0,0,0,0.20);
+  border: 1px solid rgba(0,0,0,0.10);
 }
 
 .tg-card__title {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 800;
   margin-bottom: 10px;
 }
 
@@ -214,10 +196,7 @@
   line-height: 1.55;
 }
 
-.tg-list li.me {
-  font-weight: 700;
-  text-decoration: underline;
-}
+.tg-list li.me { font-weight: 900; text-decoration: underline; }
 
 .tg-mini-loading {
   margin-top: 12px;
@@ -238,7 +217,7 @@
 /* Game */
 .tg-game {
   background: #fff;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid rgba(0,0,0,0.10);
   padding: 14px;
 }
@@ -261,7 +240,7 @@
   width: 64px;
   height: 64px;
   border-radius: 999px;
-  border: 2px solid rgba(0,0,0,0.25);
+  border: 2px solid rgba(0,0,0,0.20);
   margin: 0 auto;
   display: grid;
   place-items: center;
@@ -269,32 +248,16 @@
   background: #fff;
 }
 
-.tg-score {
-  text-align: center;
-}
-
-.tg-score__label {
-  font-size: 11px;
-  color: rgba(0,0,0,0.55);
-}
-
-.tg-score__value {
-  font-size: 28px;
-  font-weight: 700;
-  margin-top: 6px;
-}
-
-.tg-score__sub {
-  margin-top: 6px;
-  font-size: 12px;
-  color: rgba(0,0,0,0.55);
-}
+.tg-score { text-align: center; }
+.tg-score__label { font-size: 11px; color: rgba(0,0,0,0.55); }
+.tg-score__value { font-size: 28px; font-weight: 900; margin-top: 6px; }
+.tg-score__sub { margin-top: 6px; font-size: 12px; color: rgba(0,0,0,0.55); }
 
 .tg-turn {
   margin-top: 10px;
   text-align: center;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 800;
 }
 
 .tg-moves {
@@ -306,9 +269,9 @@
 
 .tg-move {
   height: 56px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.25);
-  background: #d9d9d9;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.15);
+  background: #f2f2f2;
   font-size: 24px;
   cursor: pointer;
 }
@@ -323,4 +286,41 @@
   font-size: 13px;
   color: rgba(0,0,0,0.75);
   white-space: pre-wrap;
+}
+
+/* ✅ NEW: Public tournaments list */
+.tg-subtitle {
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 8px;
+  color: rgba(0,0,0,0.80);
+}
+
+.tg-public-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.tg-public-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: #fff;
+  padding: 12px;
+  cursor: pointer;
+}
+
+.tg-public-item:active { transform: translateY(1px); }
+
+.tg-public-item__title {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.tg-public-item__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
 }
