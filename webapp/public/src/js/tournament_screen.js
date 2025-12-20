@@ -22,6 +22,18 @@
   let publicCountdownTimer = null;
   let publicPlayersTimer = null;
 
+  // ✅ NEW: public state model (легко замінюється бекендом)
+  const publicState = {
+    open: false,
+    phase: "idle", // idle | countdown | forming
+    id: null,
+    title: "—",
+    organizer: "@telegram_account",
+    seconds_left: 30,
+    seconds_total: 30,
+    players: [],
+  };
+
   // ---- DOM ----
   const $ = (id) => document.getElementById(id);
 
@@ -30,8 +42,6 @@
   const scrWait = $("scr-waiting");
   const scrGroup = $("scr-group");
   const scrError = $("scr-error");
-
-  // ✅ NEW: public details screen
   const scrPublicDetails = $("scr-public-details");
 
   const elJoinCode = $("tg-join-code");
@@ -65,19 +75,21 @@
 
   const menuBtns = ["tg-menu-1", "tg-menu-2", "tg-menu-3"].map($).filter(Boolean);
 
-  // ✅ public list container
   const elPublicList = $("tg-public-list");
 
-  // ✅ top back (smart)
   const elTopBack = $("tg-top-back");
 
-  // ✅ NEW: public details elements
+  // ✅ public details elements
   const elPubTitle = $("tg-public-title");
   const elPubOrg = $("tg-public-organizer");
+  const elPubStatus = $("tg-public-status");
+
   const elPubTime = $("tg-public-time");
   const elPubRing = $("tg-public-ring");
   const elPubPlayers = $("tg-public-players");
   const elPubCount = $("tg-public-count");
+
+  const elPubTimerBlock = $("tg-public-timer-block");
   const elPubHint = $("tg-public-timer-hint");
 
   function showScreen(which) {
@@ -88,13 +100,6 @@
 
   function isPublicDetailsOpen() {
     return scrPublicDetails && scrPublicDetails.hidden === false;
-  }
-
-  function myTgId() {
-    const v = window.DreamX?.getTgUserId?.();
-    if (!v) return null;
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
   }
 
   function fmtTime(sec) {
@@ -166,7 +171,7 @@
     if (elGroupTitle) elGroupTitle.textContent = `Ваша група № ${gNo}`;
 
     const members = state?.group_members || [];
-    const me = myTgId();
+    const me = (window.DreamX?.getTgUserId?.() ? Number(window.DreamX.getTgUserId()) : null);
 
     if (!members.length) {
       elGroupMembers.innerHTML = `<li>—</li>`;
@@ -217,20 +222,19 @@
     if (elErrText) elErrText.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
-  // -------------------------------
-  // ✅ NEW: Public details (UI stub)
-  // -------------------------------
+  // ---------------------------------------
+  // ✅ Public details: state + render (stub)
+  // ---------------------------------------
 
-  function stopPublicStubTimers() {
-    if (publicCountdownTimer) clearInterval(publicCountdownTimer);
-    publicCountdownTimer = null;
-    if (publicPlayersTimer) clearInterval(publicPlayersTimer);
-    publicPlayersTimer = null;
+  function setPublicState(patch) {
+    Object.assign(publicState, patch || {});
+    renderPublicDetails();
   }
 
   function renderPlayers(list) {
     if (!elPubPlayers) return;
-    elPubPlayers.innerHTML = list.map((p) => {
+
+    elPubPlayers.innerHTML = (list || []).map((p) => {
       return `
         <div class="tg-player">
           <div class="tg-player__name">${p.name}</div>
@@ -239,48 +243,90 @@
       `;
     }).join("");
 
-    if (elPubCount) elPubCount.textContent = String(list.length);
+    if (elPubCount) elPubCount.textContent = String((list || []).length);
   }
 
-  function openPublicDetails(stubTournament) {
-    // тут ми спеціально НЕ чіпаємо бекенд
-    stopPolling();
-    setTid(null);
-    stopPublicStubTimers();
+  function renderPublicDetails() {
+    if (!publicState.open) return;
 
-    // заглушки
-    if (elPubTitle) elPubTitle.textContent = stubTournament.title || "Public tournament";
-    if (elPubOrg) elPubOrg.textContent = stubTournament.organizer || "@telegram_account";
-    if (elPubHint) elPubHint.textContent = "Тестовий відлік (заглушка)";
+    if (elPubTitle) elPubTitle.textContent = publicState.title || "—";
+    if (elPubOrg) elPubOrg.textContent = publicState.organizer || "@telegram_account";
 
-    showScreen(scrPublicDetails);
+    // phase UI
+    if (publicState.phase === "countdown") {
+      if (elPubStatus) elPubStatus.hidden = true;
+      if (elPubTimerBlock) elPubTimerBlock.hidden = false;
 
-    // 30 секунд countdown
-    const total = 30;
-    const startedAt = Date.now();
-
-    function tickCountdown() {
-      const elapsed = (Date.now() - startedAt) / 1000;
-      const left = Math.max(0, total - elapsed);
-      const leftInt = Math.ceil(left);
-
-      if (elPubTime) elPubTime.textContent = fmtTime(leftInt);
+      if (elPubHint) elPubHint.textContent = "Тестовий відлік (заглушка)";
+      if (elPubTime) elPubTime.textContent = fmtTime(publicState.seconds_left);
 
       if (elPubRing) {
-        const p = Math.max(0, Math.min(1, 1 - (left / total)));
+        const total = Number(publicState.seconds_total || 30);
+        const left = Number(publicState.seconds_left || 0);
+        const p = total > 0 ? Math.max(0, Math.min(1, 1 - (left / total))) : 0;
         elPubRing.style.setProperty("--p", String(p));
-      }
-
-      if (left <= 0) {
-        if (elPubHint) elPubHint.textContent = "Старт! (заглушка)";
-        stopPublicStubTimers();
       }
     }
 
-    tickCountdown();
-    publicCountdownTimer = setInterval(tickCountdown, 250);
+    if (publicState.phase === "forming") {
+      // ✅ Після 30 сек: тільки список + кількість + текст “Формуються групи”
+      if (elPubTimerBlock) elPubTimerBlock.hidden = true;
 
-    // “онлайн” список гравців (заглушка)
+      if (elPubStatus) {
+        elPubStatus.hidden = false;
+        elPubStatus.textContent = "Формуються групи";
+      }
+    }
+
+    renderPlayers(publicState.players || []);
+  }
+
+  function stopPublicStubTimers() {
+    if (publicCountdownTimer) clearInterval(publicCountdownTimer);
+    publicCountdownTimer = null;
+    if (publicPlayersTimer) clearInterval(publicPlayersTimer);
+    publicPlayersTimer = null;
+  }
+
+  function openPublicDetails(stubTournament) {
+    // UI-only: не чіпаємо бекенд
+    stopPolling();
+    setTid(null);
+
+    stopPublicStubTimers();
+
+    setPublicState({
+      open: true,
+      phase: "countdown",
+      id: stubTournament?.id || null,
+      title: stubTournament?.title || "Public tournament",
+      organizer: stubTournament?.organizer || "@telegram_account",
+      seconds_total: 30,
+      seconds_left: 30,
+      players: [],
+    });
+
+    showScreen(scrPublicDetails);
+
+    // countdown tick (через state)
+    const startedAt = Date.now();
+    publicCountdownTimer = setInterval(() => {
+      const elapsed = (Date.now() - startedAt) / 1000;
+      const left = Math.max(0, 30 - elapsed);
+      const leftInt = Math.ceil(left);
+
+      setPublicState({ seconds_left: leftInt });
+
+      if (left <= 0) {
+        clearInterval(publicCountdownTimer);
+        publicCountdownTimer = null;
+
+        // ✅ перехід у “forming”
+        setPublicState({ phase: "forming" });
+      }
+    }, 250);
+
+    // players online stub
     const pool = [
       { name: "Oleksandr", tag: "@oleksandr" },
       { name: "Andrii", tag: "@andrii" },
@@ -292,19 +338,17 @@
       { name: "Maks", tag: "@maks" },
     ];
 
-    const players = [];
-    renderPlayers(players);
-
     publicPlayersTimer = setInterval(() => {
+      const players = Array.isArray(publicState.players) ? [...publicState.players] : [];
+
       if (players.length < 6) {
         const next = pool[Math.floor(Math.random() * pool.length)];
-        // щоб не дублювався часто
         if (!players.find(x => x.tag === next.tag)) players.push(next);
       } else {
-        // інколи “перемішуємо” як ніби оновилось
         players.sort(() => Math.random() - 0.5);
       }
-      renderPlayers(players);
+
+      setPublicState({ players });
     }, 1200);
   }
 
@@ -352,7 +396,6 @@
 
     const phase = res.phase || "—";
 
-    // авто-join (один раз) коли registration
     if (phase === "registration" && autoJoinWanted && !autoJoinDone && !res.joined) {
       autoJoinDone = true;
 
@@ -414,15 +457,17 @@
   }
 
   function bindUi() {
-    // ✅ smart top back
+    // smart top back
     if (elTopBack) {
       elTopBack.addEventListener("click", (e) => {
         if (isPublicDetailsOpen()) {
           e.preventDefault();
+          setPublicState({ open: false });
           stopPublicStubTimers();
           showScreen(scrFind);
+          return;
         }
-        // якщо не public details — працює як звичайний <a href="./index.html">
+        // якщо не public details — звичайний href на index.html
       });
     }
 
@@ -457,7 +502,6 @@
     }
   }
 
-  // ✅ public tournaments (UI stub)
   function renderPublicStub() {
     if (!elPublicList) return;
 
@@ -493,11 +537,10 @@
     bindUi();
     renderPublicStub();
 
-    // 1) URL join_code
     const urlJoinCode = readJoinCodeFromUrl();
     if (elJoinCode && urlJoinCode) elJoinCode.value = urlJoinCode;
 
-    // 2) Telegram start_param (як було) — якщо прийшли з t_<tid>_<code>, запускаємо реальний поллінг
+    // Telegram start_param -> реальний режим (як було)
     let tid = null;
     const sp = readStartParam();
     const parsed = parseTournamentStartParam(sp);
