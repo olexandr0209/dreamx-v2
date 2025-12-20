@@ -438,3 +438,17 @@
   font-weight: 900;
   color: rgba(0,0,0,0.55);
 }
+
+/* ✅ NEW: status text under organizer */
+.tg-public-status {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.85);
+  display: inline-block;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.86);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.06);
+}
