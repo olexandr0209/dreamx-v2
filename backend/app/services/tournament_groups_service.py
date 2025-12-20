@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.db import tournament_groups_db as db
 from app.engine.tournament_groups.grouping import make_groups
@@ -10,6 +10,8 @@ from app.engine.tournament_groups.state_machine import total_rounds_for_group, r
 from app.engine.tournament_groups.rules import MOVES, SERIES_GAMES_TOTAL
 from app.engine.tournament_groups.scoring import decide, points_for
 
+JOIN_OPEN_BEFORE_SEC = 300   # 5 хв
+JOIN_GRACE_AFTER_START_SEC = 30  # 30 сек після старту
 
 def _parse_start_at(v) -> datetime | None:
     if v is None:
@@ -24,42 +26,26 @@ def _parse_start_at(v) -> datetime | None:
     except Exception:
         return None
 
-
 def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None = None) -> dict:
+    # ✅ щоб авто-open за 5 хв і формування працювали навіть якщо юзер тисне Join першим
+    tick_tournament(tournament_id)
+
     t = db.get_tournament(tournament_id)
     if not t:
         return {"ok": False, "error": "tournament_not_found"}
 
-    if t.get("status") != "open":
-        return {"ok": False, "error": "registration_closed"}
+    start_at = _parse_start_at(t.get("start_at"))
+    now_utc = datetime.now(timezone.utc)
 
-    if t.get("access_type") == "private":
-        real = (t.get("join_code") or "").strip()
-        if not join_code or join_code.strip() != real:
-            return {"ok": False, "error": "bad_join_code"}
+    if start_at:
+        open_at = start_at - timedelta(seconds=JOIN_OPEN_BEFORE_SEC)
+        lock_at = start_at + timedelta(seconds=JOIN_GRACE_AFTER_START_SEC)
 
-    stage = db.ensure_stage(tournament_id, 1, status="pending")
-    stage_id = int(stage["id"])
+        if now_utc < open_at:
+            return {"ok": False, "error": "too_early"}
 
-    # ✅ NEW: заборона join після старту stage / після створення груп
-    st_now = db.get_stage(tournament_id, 1)
-    if st_now and st_now.get("status") != "pending":
-        return {"ok": False, "error": "already_started"}
-    if st_now and db.stage_has_groups(int(st_now["id"])):
-        return {"ok": False, "error": "already_started"}
-
-    maxp = int(t.get("max_participants") or 64)
-    cur = db.count_stage_players(stage_id)
-    if cur >= maxp:
-        # allow idempotent join if already in
-        # (просто повернем ok якщо вже є)
-        players = db.list_stage_players(stage_id)
-        if tg_user_id in players:
-            return {"ok": True, "stage_id": stage_id}
-        return {"ok": False, "error": "tournament_full"}
-
-    db.add_stage_player(stage_id, tg_user_id)
-    return {"ok": True, "stage_id": stage_id}
+        if now_utc >= lock_at:
+            return {"ok": False, "error": "join_closed"}
 
 
 def leave_tournament(tournament_id: int, tg_user_id: int) -> dict:
@@ -70,7 +56,6 @@ def leave_tournament(tournament_id: int, tg_user_id: int) -> dict:
         return {"ok": False, "error": "already_started"}
     db.remove_stage_player(int(stage["id"]), tg_user_id)
     return {"ok": True}
-
 
 def tick_tournament(tournament_id: int, now_utc: datetime | None = None) -> dict:
     now_utc = now_utc or datetime.now(timezone.utc)
@@ -83,20 +68,31 @@ def tick_tournament(tournament_id: int, now_utc: datetime | None = None) -> dict
     if not start_at:
         return {"ok": True, "status": "waiting_start_time"}
 
-    # Stage 1 завжди існує (pending) якщо була реєстрація
+    open_at = start_at - timedelta(seconds=JOIN_OPEN_BEFORE_SEC)
+    lock_at = start_at + timedelta(seconds=JOIN_GRACE_AFTER_START_SEC)
+
+    # ✅ авто-відкриття реєстрації за 5 хв (як ти хочеш)
+    if (t.get("status") == "draft") and (now_utc >= open_at) and (now_utc < lock_at):
+        db.set_tournament_status(tournament_id, "open")
+
     st1 = db.get_stage(tournament_id, 1)
     if not st1:
         return {"ok": True, "status": "no_stage_yet"}
 
-    # старт
-    if st1["status"] == "pending" and now_utc >= start_at:
-        _start_stage(tournament_id, int(st1["id"]))
+    stage_id = int(st1["id"])
+    stage_status = st1["status"]
 
-    # далі: авто-прогресія stage -> stage поки не буде 1 переможець
+    # ✅ В момент lock_at: закриваємо набір (forming), але НЕ створюємо групи в цій же відповіді
+    if stage_status == "pending" and now_utc >= lock_at:
+        db.set_stage_status(stage_id, "forming")
+        return {"ok": True, "status": "forming"}
+
+    # ✅ На наступних тиках: вже реально стартуємо й формуємо групи
+    if stage_status == "forming":
+        _start_stage(tournament_id, stage_id)
+
     _progress_all_running_stages(tournament_id)
-
     return {"ok": True, "status": "ticked"}
-
 
 def _start_stage(tournament_id: int, stage_id: int) -> None:
     # захист: якщо вже є групи — значить старт робили
@@ -197,49 +193,76 @@ def _progress_group(group_id: int) -> None:
     # Просування round/group робиться після кожного завершеного матчу у _maybe_advance_group_after_match().
     return
 
-
 def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     # tick на кожний state (як у PvP polling)
     tick_tournament(tournament_id)
 
-    # ✅ NEW (мінімально): UI-поля (назва/організатор/таймер/кількість/чи joined)
     t = db.get_tournament(tournament_id)
-    start_at = _parse_start_at(t.get("start_at")) if t else None
     now_utc = datetime.now(timezone.utc)
-    seconds_to_start = None
-    if start_at:
-        seconds_to_start = max(0, int((start_at - now_utc).total_seconds()))
+
+    start_at = _parse_start_at(t.get("start_at")) if t else None
     start_total_sec = int((t.get("start_delay_sec") or 60)) if t else 60
 
     tournament_name = (t.get("name") or t.get("title") or f"#{tournament_id}") if t else f"#{tournament_id}"
     organizer = (t.get("organizer") or t.get("owner_name") or "—") if t else "—"
+
+    # ---- таймінги (5 хв до старту + 30 сек після) ----
+    join_open_before_sec = int(globals().get("JOIN_OPEN_BEFORE_SEC", 300))
+    join_grace_after_start_sec = int(globals().get("JOIN_GRACE_AFTER_START_SEC", 30))
+
+    seconds_to_start = None
+    seconds_to_lock = None
+    phase_time = "waiting_start_time"
+    join_allowed_by_time = False
+
+    if start_at:
+        open_at = start_at - timedelta(seconds=join_open_before_sec)
+        lock_at = start_at + timedelta(seconds=join_grace_after_start_sec)
+
+        seconds_to_start = max(0, int((start_at - now_utc).total_seconds()))
+        seconds_to_lock = max(0, int((lock_at - now_utc).total_seconds()))
+
+        if now_utc < open_at:
+            phase_time = "countdown"          # ще рано
+            join_allowed_by_time = False
+        elif now_utc < start_at:
+            phase_time = "registration"       # до старту (в межах 5 хв)
+            join_allowed_by_time = True
+        elif now_utc < lock_at:
+            phase_time = "late_join"          # 30 сек після старту
+            join_allowed_by_time = True
+        else:
+            phase_time = "forming_groups"     # після 30 сек (набір закритий)
+            join_allowed_by_time = False
 
     # ✅ NEW: намагаємось взяти "останній stage" для цього юзера
     st = None
     fn_latest = getattr(db, "get_user_latest_stage", None)
     if callable(fn_latest):
         st = fn_latest(tournament_id, tg_user_id)
-
     if not st:
         st = db.get_stage(tournament_id, 1)
 
+    # якщо stage ще нема — все одно віддаємо корисні таймери/фази для лоббі
     if not st:
         return {
             "ok": True,
-            "phase": "no_stage",
+            "phase": phase_time if phase_time != "waiting_start_time" else "no_stage",
             "tournament_name": tournament_name,
             "organizer": organizer,
             "seconds_to_start": seconds_to_start,
+            "seconds_to_lock": seconds_to_lock,
             "start_total_sec": start_total_sec,
             "players_count": 0,
             "joined": False,
+            "join_allowed": False,
         }
 
     stage_id = int(st["id"])
     stage_no = int(st.get("stage_no") or 1)
     stage_status = st["status"]
 
-    # ✅ NEW: players_count + joined (без зміни db-файлів)
+    # players_count + joined
     players_count = db.count_stage_players(stage_id)
     try:
         stage_players = db.list_stage_players(stage_id)
@@ -247,40 +270,51 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     except Exception:
         joined = False
 
+    # чи взагалі показувати кнопку JOIN
+    # (узгоджуємо з join_tournament: там зараз треба t.status == 'open')
+    t_status = (t.get("status") if t else None)
+    join_allowed = (
+        (t_status == "open") and
+        (stage_status == "pending") and
+        join_allowed_by_time and
+        (not joined)
+    )
+
     g = db.get_group_by_user(stage_id, tg_user_id)
 
     if not g:
-        # або ще не приєднався, або ще не сформували групи
-        if stage_status == "pending":
-            return {
-                "ok": True,
-                "phase": "registration",
-                "stage_no": stage_no,
-                "stage_status": stage_status,
-                "tournament_name": tournament_name,
-                "organizer": organizer,
-                "seconds_to_start": seconds_to_start,
-                "start_total_sec": start_total_sec,
-                "players_count": players_count,
-                "joined": joined,
-            }
+        # якщо груп ще немає
+        if stage_status in ("forming",):
+            phase = "forming_groups"
+        elif stage_status == "pending":
+            # показуємо точну фазу по часу
+            phase = phase_time if phase_time != "waiting_start_time" else "registration"
+            # якщо час lock вже пройшов, але stage ще pending (на випадок затримки tick) — все одно "формуються"
+            if phase_time == "forming_groups":
+                phase = "forming_groups"
+        else:
+            # running, але групи ще не видно (рідкісний стан) — теж "формуються"
+            phase = "forming_groups"
+
         return {
             "ok": True,
-            "phase": "waiting_group",
+            "phase": phase,
             "stage_no": stage_no,
             "stage_status": stage_status,
             "tournament_name": tournament_name,
             "organizer": organizer,
             "seconds_to_start": seconds_to_start,
+            "seconds_to_lock": seconds_to_lock,
             "start_total_sec": start_total_sec,
             "players_count": players_count,
             "joined": joined,
+            "join_allowed": join_allowed,
         }
 
+    # ---- група вже є ----
     group_id = int(g["id"])
     members = db.list_group_members(group_id)
 
-    # ✅ NEW: group_members для WebApp (список як у Figma)
     group_members = sorted(members, key=lambda x: int(x["seat"]))
     group_members_ui = [
         {
@@ -291,19 +325,16 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
         for x in group_members
     ]
 
-    # standings (простий сорт)
     standings = sorted(
         members,
         key=lambda x: (-int(x["points"]), -int(x["wins"]), -int(x["draws"]), int(x["losses"]), int(x["seat"])),
     )
 
-    # поточний раунд
     current_round = int(g["current_round"])
     match = db.find_user_match_in_round(group_id, "group", 0, current_round, tg_user_id)
 
     active_match = None
     if match:
-        # активуємо матч якщо треба
         if match["status"] == "waiting":
             db.set_match_status(int(match["id"]), "active")
             match = db.get_match(int(match["id"]))
@@ -317,9 +348,11 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
         "tournament_name": tournament_name,
         "organizer": organizer,
         "seconds_to_start": seconds_to_start,
+        "seconds_to_lock": seconds_to_lock,
         "start_total_sec": start_total_sec,
         "players_count": players_count,
         "joined": joined,
+        "join_allowed": False,  # у групі кнопка join не потрібна
         "group": {
             "id": group_id,
             "status": g["status"],
