@@ -14,7 +14,7 @@
   let lastMatchId = null;
   let lastNeedMove = false;
 
-  // ✅ NEW: авто-join (тільки 1 раз)
+  // ✅ авто-join (тільки 1 раз)
   let autoJoinWanted = false;
   let autoJoinDone = false;
 
@@ -30,7 +30,6 @@
   const scrGroup = $("scr-group");
   const scrError = $("scr-error");
 
-  const elTidInput = $("tg-tournament-id");
   const elJoinCode = $("tg-join-code");
   const elOpen = $("tg-open");
 
@@ -62,6 +61,9 @@
   const elBackFind = $("tg-back-find");
 
   const menuBtns = ["tg-menu-1", "tg-menu-2", "tg-menu-3"].map($).filter(Boolean);
+
+  // ✅ NEW: public list container
+  const elPublicList = $("tg-public-list");
 
   function showScreen(which) {
     const all = [scrFind, scrReg, scrWait, scrGroup, scrError];
@@ -202,26 +204,46 @@
     setMovesEnabled(lastNeedMove);
   }
 
-  function renderError(err) {
+  function renderMessage(obj) {
     showScreen(scrError);
-    if (elErrText) elErrText.textContent = JSON.stringify(err, null, 2);
+    if (elErrText) elErrText.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
+  }
+
+  // ---- ✅ NEW: public tournaments (UI stub) ----
+  function renderPublicStub() {
+    if (!elPublicList) return;
+
+    // Заглушка: 3 фейкові публічні турніри
+    const items = [
+      { id: 101, title: "Публічний турнір #101", subtitle: "Натисни — перевірка кнопки" },
+      { id: 102, title: "Публічний турнір #102", subtitle: "Поки без бекенду" },
+      { id: 103, title: "Публічний турнір #103", subtitle: "Далі підключимо API" },
+    ];
+
+    elPublicList.innerHTML = items.map((t) => {
+      return `
+        <button class="tg-public-item" data-pub-id="${t.id}">
+          <div class="tg-public-item__title">${t.title}</div>
+          <div class="tg-public-item__sub">${t.subtitle}</div>
+        </button>
+      `;
+    }).join("");
+
+    elPublicList.querySelectorAll("[data-pub-id]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tid = btn.getAttribute("data-pub-id");
+        renderMessage(`✅ Все працює (заглушка)\n\nНатиснув public tournament id=${tid}\n\nДалі зробимо реальний список з бекенду.`);
+      });
+    });
   }
 
   // ---- Core ----
-  function readTidFromUrl() {
-    const p = new URLSearchParams(window.location.search);
-    const tid = p.get("tournament_id");
-    return tid ? String(tid) : null;
-  }
-
-  // ✅ NEW: можна передавати join_code в URL
   function readJoinCodeFromUrl() {
     const p = new URLSearchParams(window.location.search);
     const code = p.get("join_code") || p.get("code") || p.get("tagid");
     return code ? String(code).trim() : "";
   }
 
-  // ✅ NEW: читаємо Telegram start_param (для startapp)
   function readStartParam() {
     try {
       return window.Telegram?.WebApp?.initDataUnsafe?.start_param || "";
@@ -230,7 +252,6 @@
     }
   }
 
-  // ✅ NEW: формат payload = t_<tid>_<join_code>
   function parseTournamentStartParam(sp) {
     if (!sp) return null;
     if (!String(sp).startsWith("t_")) return null;
@@ -238,23 +259,14 @@
     if (parts.length < 3) return null;
 
     const tid = parts[1];
-    const code = parts.slice(2).join("_"); // на всяк випадок
+    const code = parts.slice(2).join("_");
     if (!tid) return null;
 
     return { tid: String(tid), joinCode: String(code || "") };
   }
 
-  function setUrlTid(tid) {
-    const p = new URLSearchParams(window.location.search);
-    if (tid) p.set("tournament_id", String(tid));
-    else p.delete("tournament_id");
-    const newUrl = `${window.location.pathname}?${p.toString()}`;
-    window.history.replaceState({}, "", newUrl);
-  }
-
   function setTid(tid) {
     tournamentId = tid ? String(tid) : null;
-    if (tournamentId) setUrlTid(tournamentId);
   }
 
   async function pollState() {
@@ -262,26 +274,24 @@
 
     const res = await window.TournamentApi.state(tournamentId);
     if (!res.ok) {
-      renderError(res);
+      renderMessage(res);
       stopPolling();
       return;
     }
 
     const phase = res.phase || "—";
 
-    // ✅ NEW: авто-join (один раз) тільки коли бачимо реєстрацію і ще не joined
+    // авто-join (один раз) коли registration
     if (phase === "registration" && autoJoinWanted && !autoJoinDone && !res.joined) {
       autoJoinDone = true;
 
       const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
       const j = await window.TournamentApi.join(tournamentId, code || "");
       if (!j.ok) {
-        renderError(j);
+        renderMessage(j);
         stopPolling();
         return;
       }
-
-      // не робимо рекурсій — просто дочекаємось наступного poll
       return;
     }
 
@@ -308,7 +318,7 @@
     const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
     const res = await window.TournamentApi.join(tournamentId, code || "");
     if (!res.ok) {
-      renderError(res);
+      renderMessage(res);
       return;
     }
     startPolling();
@@ -322,7 +332,7 @@
     setMovesEnabled(false);
     const res = await window.TournamentApi.move(tournamentId, lastMatchId, move);
     if (!res.ok) {
-      renderError(res);
+      renderMessage(res);
       return;
     }
     pollState();
@@ -335,10 +345,14 @@
   function bindUi() {
     if (elOpen) {
       elOpen.addEventListener("click", () => {
-        const v = elTidInput?.value ? String(elTidInput.value).trim() : "";
-        if (!v) return;
-        setTid(v);
-        startPolling();
+        // ✅ на цьому кроці: відкривати турнір будемо тільки через start_param або майбутній public list
+        // Поки — просто показ повідомлення
+        const code = elJoinCode?.value ? String(elJoinCode.value).trim() : "";
+        if (!code) {
+          renderMessage("ℹ️ На цьому кроці приватний турнір відкриваємо тільки через Telegram start_param.\n\n(Далі зробимо пошук по join_code через API.)");
+          return;
+        }
+        renderMessage(`✅ Все працює (заглушка)\n\nВвів join_code: ${code}\n\nДалі зробимо реальний пошук по коду.`);
       });
     }
 
@@ -364,31 +378,21 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     bindUi();
+    renderPublicStub();
 
-    // 1) URL params
-    let tid = readTidFromUrl();
+    // 1) URL join_code
     const urlJoinCode = readJoinCodeFromUrl();
+    if (elJoinCode && urlJoinCode) elJoinCode.value = urlJoinCode;
 
-    // 2) Telegram start_param (startapp)
-    if (!tid) {
-      const sp = readStartParam();
-      const parsed = parseTournamentStartParam(sp);
-      if (parsed?.tid) {
-        tid = parsed.tid;
-        if (elJoinCode && parsed.joinCode) elJoinCode.value = parsed.joinCode;
-        autoJoinWanted = true;
-      }
-    } else {
-      // якщо tid є в URL — теж можемо авто-join (якщо join_code є)
-      if (urlJoinCode) {
-        autoJoinWanted = true;
-      }
+    // 2) Telegram start_param (startapp) => якщо прийшли з t_<tid>_<code>, запускаємо реально
+    let tid = null;
+    const sp = readStartParam();
+    const parsed = parseTournamentStartParam(sp);
+    if (parsed?.tid) {
+      tid = parsed.tid;
+      if (elJoinCode && parsed.joinCode) elJoinCode.value = parsed.joinCode;
+      autoJoinWanted = true;
     }
-
-    // заповнюємо поле join_code з URL якщо є (і не перезатерли з start_param)
-    if (elJoinCode && urlJoinCode && !elJoinCode.value) elJoinCode.value = urlJoinCode;
-
-    if (tid && elTidInput) elTidInput.value = tid;
 
     if (tid) {
       setTid(tid);
