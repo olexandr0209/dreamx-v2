@@ -528,3 +528,103 @@
   color: rgba(0,0,0,0.55);
   font-weight: 800;
 }
+
+
+
+/* важливо щоб інпути не вилізали */
+.tg-input { box-sizing: border-box; max-width: 100%; }
+
+
+.tg-player{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+}
+.tg-player + .tg-player { margin-top: 8px; }
+
+.tg-player__name{ font-size:14px; font-weight:950; }
+.tg-player__tag{ font-size:12px; font-weight:800; color: rgba(0,0,0,0.55); }
+
+.pt-head{
+  padding: 10px 2px 14px;
+  text-align: center;
+}
+.pt-title{
+  font-size: 30px;
+  font-weight: 950;
+  letter-spacing: -0.3px;
+  line-height: 1.1;
+}
+.pt-org{
+  margin-top: 6px;
+  font-size: 13px;
+  color: rgba(0,0,0,0.55);
+  font-weight: 800;
+}
+.pt-org__u{
+  color: rgba(0,0,0,0.85);
+  font-weight: 950;
+}
+
+.pt-timer{
+  display: grid;
+  place-items: center;
+  margin-top: 6px;
+}
+.pt-ring{ margin-top: 2px; }
+.pt-timer-note{ text-align: center; }
+
+.pt-status{
+  margin-top: 10px;
+  text-align: center;
+}
+.pt-status__text{
+  display: inline-block;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  font-weight: 950;
+}
+
+.pt-bubble{
+  margin: 10px auto 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  color: #fff;
+  background: #111;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+}
+.tg-game-stub{
+  margin-top: 18px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+  text-align: center;
+}
+.tg-game-stub__badge{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #111;
+  color: #fff;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+}
+.tg-game-stub__title{ font-size: 20px; font-weight: 950; letter-spacing: -0.2px; }
+.tg-game-stub__sub{ margin-top: 6px; font-size: 12px; color: rgba(0,0,0,0.55); font-weight: 800; }
