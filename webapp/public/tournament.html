@@ -1,5 +1,4 @@
 <!-- tournament.html -->
-
 <!doctype html>
 <html lang="uk">
 <head>
@@ -19,9 +18,9 @@
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
 
-        <a class="tg-topbar__back" id="tg-top-back" href="./index.html" aria-label="Назад">
+        <a class="tg-topbar__back" href="./index.html" aria-label="Назад на головну">
           <span class="tg-topbar__backIcon">←</span>
-          <span class="tg-topbar__backText">Назад</span>
+          <span class="tg-topbar__backText">Home</span>
         </a>
 
         <div class="tg-topbar__brand">
@@ -44,6 +43,7 @@
             <div class="tg-head__sub">Private через код • Public у списку</div>
           </section>
 
+          <!-- PRIVATE -->
           <section class="tg-block">
             <div class="tg-block__top">
               <div class="tg-block__title">Private tournament</div>
@@ -63,6 +63,7 @@
 
           <div class="tg-divider"><span>або</span></div>
 
+          <!-- PUBLIC LIST -->
           <section class="tg-block">
             <div class="tg-block__top">
               <div class="tg-block__title">Public tournaments</div>
@@ -74,83 +75,34 @@
           </section>
         </section>
 
-        <!-- ✅ PUBLIC DETAILS (UI stub) -->
-        <section class="tg-screen" id="scr-public-details" hidden>
-
-          <!-- HEAD -->
-          <section class="tg-public-head">
-            <div class="tg-public-title" id="tg-public-title">—</div>
-            <div class="tg-public-org">
-              Організатор: <span class="tg-public-org__u" id="tg-public-organizer">@—</span>
-            </div>
-
-            <!-- ✅ status: “Реєстрація завершена! Формуються групи” / “Твоя група 1а” -->
-            <div class="tg-public-status" id="tg-public-status" hidden>—</div>
-
-            <!-- ✅ small circle on top (показуємо коли група готова / перед переходом у game) -->
-            <div class="tg-public-bubble" id="tg-public-bubble" hidden>●</div>
-          </section>
-
-          <section class="tg-public-body">
-
-            <!-- countdown ring block (ховаємо після 30s) -->
-            <div class="tg-public-timer" id="tg-public-timer-block">
-              <div class="tg-public-timer__ring tg-ring" id="tg-public-ring" style="--p:0;">
-                <div class="tg-ring__inner">
-                  <div class="tg-ring__label">Старт через</div>
-                  <div class="tg-ring__value" id="tg-public-time">00:30</div>
-                </div>
-              </div>
-              <div class="tg-public-timer__hint" id="tg-public-timer-hint">Тестовий відлік (заглушка)</div>
-            </div>
-
-            <div class="tg-gap"></div>
-
-            <section class="tg-block">
-              <div class="tg-block__top">
-                <div class="tg-block__title" id="tg-public-players-title">Учасники</div>
-                <div class="tg-badge tg-badge--soft" id="tg-public-count">0</div>
-              </div>
-
-              <div class="tg-public-players">
-                <div class="tg-public-players__list" id="tg-public-players"></div>
-                <div class="tg-footnote" id="tg-public-players-note">Список оновлюється онлайн (заглушка).</div>
-              </div>
-            </section>
-
-          </section>
-        </section>
-
-        <!-- ✅ PUBLIC GAME STUB -->
-        <section class="tg-screen" id="scr-public-game" hidden>
-          <section class="tg-game-stub">
-            <div class="tg-game-stub__badge">DX</div>
-            <div class="tg-game-stub__title">Заглушка ігрового екрану</div>
-            <div class="tg-game-stub__sub">Далі підключимо бекенд і реальний матч.</div>
-          </section>
-        </section>
-
-        <!-- EXISTING SCREENS (як були) -->
+        <!-- PRIVATE SCREENS (як було) -->
         <section class="tg-screen" id="scr-registration" hidden>
           <div class="tg-big" id="tg-reg-title">Реєстрація</div>
+
           <div class="tg-timer" id="tg-start-block" hidden>
             <div class="tg-timer__label">Старт через</div>
             <div class="tg-timer__value" id="tg-start-in">—</div>
           </div>
+
           <div class="tg-gap"></div>
+
           <button id="tg-join" class="tg-btn tg-btn--primary">✅ Join</button>
           <div class="tg-gap-sm"></div>
           <button class="tg-btn" id="tg-menu-1">Меню</button>
+
           <div class="tg-footnote" id="tg-reg-note"></div>
         </section>
 
         <section class="tg-screen" id="scr-waiting" hidden>
           <div class="tg-big">Очікуємо на старт</div>
+
           <div class="tg-count" id="tg-players-count-block" hidden>
             <div class="tg-count__num" id="tg-players-count">—</div>
             <div class="tg-count__label">гравців у турнірі</div>
           </div>
+
           <div class="tg-gap"></div>
+
           <div class="tg-ring-wrap" id="tg-ring-block">
             <div class="tg-ring" id="tg-ring">
               <div class="tg-ring__inner">
@@ -159,7 +111,9 @@
               </div>
             </div>
           </div>
+
           <div class="tg-gap"></div>
+
           <button class="tg-btn" id="tg-menu-2">Меню</button>
           <div class="tg-footnote" id="tg-wait-note"></div>
         </section>
@@ -168,6 +122,7 @@
           <div class="tg-card">
             <div class="tg-card__title" id="tg-group-title">Ваша група № —</div>
             <ol class="tg-list" id="tg-group-members"></ol>
+
             <div class="tg-mini-loading" id="tg-group-loading" hidden>
               <div class="tg-mini-loading__dot"></div>
               <div>оновлення…</div>
@@ -205,6 +160,7 @@
           </section>
 
           <div class="tg-gap"></div>
+
           <button class="tg-btn" id="tg-menu-3">Меню</button>
           <div class="tg-footnote" id="tg-group-note"></div>
         </section>
@@ -229,6 +185,6 @@
 
   <script src="/src/js/dreamx_core.js?v=1"></script>
   <script src="/src/js/tournament_client.js?v=2"></script>
-  <script src="/src/js/tournament_screen.js?v=2"></script>
+  <script src="/src/js/tournament_screen.js?v=3"></script>
 </body>
 </html>
