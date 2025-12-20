@@ -15,7 +15,7 @@
 <body class="dx theme-light">
   <div class="dx-app">
 
-    <!-- TOP BAR (мінімально як у Figma) -->
+    <!-- TOP BAR -->
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
         <div class="tg-topbar__title">DreamX</div>
@@ -36,19 +36,21 @@
         <!-- SCREEN: FIND/OPEN -->
         <section class="tg-screen" id="scr-find">
           <div class="tg-panel">
-            <div class="tg-label">Код турніру</div>
-            <input id="tg-tournament-id" class="tg-input" type="text" placeholder="Напр. 1" />
-            <div class="tg-hint">Можна через URL: <span class="tg-mono">?tournament_id=1</span></div>
-
-            <div class="tg-gap"></div>
-
-            <div class="tg-label">Join code (якщо private)</div>
+            <div class="tg-label">Join code</div>
             <input id="tg-join-code" class="tg-input" type="text" placeholder="Напр. ABC123" />
-            <div class="tg-hint">Якщо турнір публічний — лишай порожнім.</div>
+            <div class="tg-hint">Для private турніру введи код від creator_bot. Для public — не потрібно.</div>
 
             <div class="tg-gap"></div>
 
             <button id="tg-open" class="tg-btn tg-btn--primary">Відкрити</button>
+
+            <div class="tg-gap"></div>
+
+            <!-- ✅ NEW: PUBLIC LIST (заглушка) -->
+            <div class="tg-subtitle">Публічні турніри</div>
+            <div class="tg-public-list" id="tg-public-list"></div>
+
+            <div class="tg-footnote" id="tg-find-note"></div>
           </div>
         </section>
 
@@ -148,7 +150,7 @@
 
         <!-- SCREEN: ERROR -->
         <section class="tg-screen" id="scr-error" hidden>
-          <div class="tg-big">Помилка</div>
+          <div class="tg-big">Повідомлення</div>
           <div class="tg-error" id="tg-error-text">—</div>
           <div class="tg-gap"></div>
           <button class="tg-btn tg-btn--primary" id="tg-back-find">Назад</button>
