@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Iterable
 from datetime import datetime, timezone
-
 from psycopg2.extras import RealDictCursor
 
 from app.db.connection import get_conn
@@ -14,13 +12,18 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def _cursor(conn):
+    # ✅ гарантуємо dict-рядки всюди (row["c"], t.get(...), тощо)
+    return conn.cursor(cursor_factory=RealDictCursor)
+
+
 # ---------------------------
 # Tournament
 # ---------------------------
 
 def get_tournament(tournament_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT id, status, access_type, join_code,
@@ -33,30 +36,34 @@ def get_tournament(tournament_id: int) -> dict | None:
             )
             return cur.fetchone()
 
+
 def set_tournament_status(tournament_id: int, status: str) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "UPDATE tournaments SET status=%s, updated_at=NOW() WHERE id=%s",
                 (status, tournament_id),
             )
         conn.commit()
 
+
 # ---------------------------
 # Stage
 # ---------------------------
+
 def is_stage_player(stage_id: int, tg_user_id: int) -> bool:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "SELECT 1 FROM tournament_stage_players WHERE stage_id=%s AND tg_user_id=%s LIMIT 1",
                 (stage_id, tg_user_id),
             )
             return cur.fetchone() is not None
 
+
 def get_stage(tournament_id: int, stage_no: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -70,7 +77,7 @@ def get_stage(tournament_id: int, stage_no: int) -> dict | None:
 
 def ensure_stage(tournament_id: int, stage_no: int, status: str = "pending") -> dict:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_stages(tournament_id, stage_no, status)
@@ -89,7 +96,7 @@ def ensure_stage(tournament_id: int, stage_no: int, status: str = "pending") -> 
 
 def set_stage_status(stage_id: int, status: str) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             if status == "running":
                 cur.execute(
                     """
@@ -122,7 +129,7 @@ def set_stage_status(stage_id: int, status: str) -> None:
 
 def count_stage_players(stage_id: int) -> int:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "SELECT COUNT(*) AS c FROM tournament_stage_players WHERE stage_id=%s",
                 (stage_id,),
@@ -133,7 +140,7 @@ def count_stage_players(stage_id: int) -> int:
 
 def list_stage_players(stage_id: int) -> list[int]:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT tg_user_id
@@ -149,7 +156,7 @@ def list_stage_players(stage_id: int) -> list[int]:
 
 def add_stage_player(stage_id: int, tg_user_id: int) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_stage_players(stage_id, tg_user_id)
@@ -163,7 +170,7 @@ def add_stage_player(stage_id: int, tg_user_id: int) -> None:
 
 def remove_stage_player(stage_id: int, tg_user_id: int) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "DELETE FROM tournament_stage_players WHERE stage_id=%s AND tg_user_id=%s",
                 (stage_id, tg_user_id),
@@ -177,7 +184,7 @@ def remove_stage_player(stage_id: int, tg_user_id: int) -> None:
 
 def stage_has_groups(stage_id: int) -> bool:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "SELECT 1 FROM tournament_groups WHERE stage_id=%s LIMIT 1",
                 (stage_id,),
@@ -187,7 +194,7 @@ def stage_has_groups(stage_id: int) -> bool:
 
 def create_group(stage_id: int, group_no: int, group_size: int, total_rounds: int) -> int:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_groups(stage_id, group_no, group_size, total_rounds, status, current_round, updated_at)
@@ -203,7 +210,7 @@ def create_group(stage_id: int, group_no: int, group_size: int, total_rounds: in
 
 def set_group_status(group_id: int, status: str) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "UPDATE tournament_groups SET status=%s, updated_at=NOW() WHERE id=%s",
                 (status, group_id),
@@ -213,7 +220,7 @@ def set_group_status(group_id: int, status: str) -> None:
 
 def set_group_current_round(group_id: int, current_round: int) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "UPDATE tournament_groups SET current_round=%s, updated_at=NOW() WHERE id=%s",
                 (current_round, group_id),
@@ -223,7 +230,7 @@ def set_group_current_round(group_id: int, current_round: int) -> None:
 
 def add_group_member(group_id: int, tg_user_id: int, seat: int) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_group_members(group_id, tg_user_id, seat)
@@ -237,7 +244,7 @@ def add_group_member(group_id: int, tg_user_id: int, seat: int) -> None:
 
 def list_group_members(group_id: int) -> list[dict]:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT tg_user_id, seat, points, matches_played, wins, draws, losses, rank, advanced, eliminated
@@ -252,7 +259,7 @@ def list_group_members(group_id: int) -> list[dict]:
 
 def get_group_by_user(stage_id: int, tg_user_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT g.*
@@ -267,7 +274,7 @@ def get_group_by_user(stage_id: int, tg_user_id: int) -> dict | None:
 
 def list_stage_groups(stage_id: int) -> list[dict]:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -294,7 +301,7 @@ def create_group_match(
     series_total: int,
 ) -> int:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_group_matches(
@@ -314,7 +321,7 @@ def create_group_match(
 
 def list_round_matches(group_id: int, match_kind: str, tiebreak_no: int, round_no: int) -> list[dict]:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -329,7 +336,7 @@ def list_round_matches(group_id: int, match_kind: str, tiebreak_no: int, round_n
 
 def find_user_match_in_round(group_id: int, match_kind: str, tiebreak_no: int, round_no: int, tg_user_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -345,7 +352,7 @@ def find_user_match_in_round(group_id: int, match_kind: str, tiebreak_no: int, r
 
 def count_unfinished_matches(group_id: int, match_kind: str, tiebreak_no: int) -> int:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT COUNT(*) AS c
@@ -359,7 +366,7 @@ def count_unfinished_matches(group_id: int, match_kind: str, tiebreak_no: int) -
 
 def set_match_status(match_id: int, status: str) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "UPDATE tournament_group_matches SET status=%s, updated_at=NOW() WHERE id=%s",
                 (status, match_id),
@@ -369,14 +376,14 @@ def set_match_status(match_id: int, status: str) -> None:
 
 def get_match(match_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute("SELECT * FROM tournament_group_matches WHERE id=%s", (match_id,))
             return cur.fetchone()
 
 
 def get_latest_game(match_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT *
@@ -392,7 +399,7 @@ def get_latest_game(match_id: int) -> dict | None:
 
 def get_game(match_id: int, game_no: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 "SELECT * FROM tournament_match_games WHERE match_id=%s AND game_no=%s",
                 (match_id, game_no),
@@ -403,8 +410,7 @@ def get_game(match_id: int, game_no: int) -> dict | None:
 def upsert_game_move(match_id: int, game_no: int, as_p1: bool, move: str) -> None:
     col = "p1_move" if as_p1 else "p2_move"
     with get_conn() as conn:
-        with conn.cursor() as cur:
-            # створимо рядок якщо його нема
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 INSERT INTO tournament_match_games(match_id, game_no)
@@ -413,7 +419,6 @@ def upsert_game_move(match_id: int, game_no: int, as_p1: bool, move: str) -> Non
                 """,
                 (match_id, game_no),
             )
-            # виставимо хід якщо ще не виставлений
             cur.execute(
                 f"""
                 UPDATE tournament_match_games
@@ -427,7 +432,7 @@ def upsert_game_move(match_id: int, game_no: int, as_p1: bool, move: str) -> Non
 
 def set_game_result(match_id: int, game_no: int, result: str, p1_points: int, p2_points: int) -> bool:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 UPDATE tournament_match_games
@@ -441,14 +446,9 @@ def set_game_result(match_id: int, game_no: int, result: str, p1_points: int, p2
     return changed
 
 
-def apply_match_progress(
-    match_id: int,
-    add_games_played: int,
-    add_p1_points: int,
-    add_p2_points: int,
-) -> None:
+def apply_match_progress(match_id: int, add_games_played: int, add_p1_points: int, add_p2_points: int) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 UPDATE tournament_group_matches
@@ -465,7 +465,7 @@ def apply_match_progress(
 
 def finish_match(match_id: int, winner_tg_user_id: int | None) -> bool:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 UPDATE tournament_group_matches
@@ -479,18 +479,10 @@ def finish_match(match_id: int, winner_tg_user_id: int | None) -> bool:
     return changed
 
 
-def apply_member_match_result(
-    group_id: int,
-    p1: int,
-    p2: int,
-    p1_series_points: int,
-    p2_series_points: int,
-    winner: int | None,
-) -> None:
-    # апдейт points + W/D/L + matches_played
+def apply_member_match_result(group_id: int, p1: int, p2: int, p1_series_points: int, p2_series_points: int, winner: int | None) -> None:
     def upd(tg_user_id: int, add_points: int, w: int, d: int, l: int):
         with get_conn() as conn:
-            with conn.cursor() as cur:
+            with _cursor(conn) as cur:
                 cur.execute(
                     """
                     UPDATE tournament_group_members
@@ -515,9 +507,10 @@ def apply_member_match_result(
         upd(p1, p1_series_points, 0, 0, 1)
         upd(p2, p2_series_points, 1, 0, 0)
 
+
 def get_user_latest_stage(tournament_id: int, tg_user_id: int) -> dict | None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT s.*
@@ -545,7 +538,7 @@ def get_user_latest_stage(tournament_id: int, tg_user_id: int) -> dict | None:
 
 def set_member_ranks(group_id: int, ordered_tg_ids: list[int], advanced_top: int = 2) -> None:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             for idx, tg in enumerate(ordered_tg_ids, start=1):
                 adv = idx <= advanced_top
                 elim = not adv
@@ -562,7 +555,7 @@ def set_member_ranks(group_id: int, ordered_tg_ids: list[int], advanced_top: int
 
 def get_advanced_players(stage_id: int) -> list[int]:
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with _cursor(conn) as cur:
             cur.execute(
                 """
                 SELECT DISTINCT m.tg_user_id
