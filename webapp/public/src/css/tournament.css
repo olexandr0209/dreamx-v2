@@ -452,3 +452,79 @@
   background: rgba(255,255,255,0.86);
   box-shadow: 0 10px 26px rgba(0,0,0,0.06);
 }
+
+/* ✅ NEW: маленький кружок зверху */
+.tg-public-bubble{
+  margin: 10px auto 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  color: #fff;
+  background: #111;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+}
+
+/* ✅ Players list items (приємний вигляд, без "руху") */
+.tg-player{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+}
+
+.tg-player + .tg-player { margin-top: 8px; }
+
+.tg-player__name{
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.tg-player__tag{
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+  font-weight: 800;
+}
+
+/* ✅ Game stub screen */
+.tg-game-stub{
+  margin-top: 18px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+  text-align: center;
+}
+
+.tg-game-stub__badge{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: #111;
+  color: #fff;
+  margin: 0 auto 10px;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
+}
+
+.tg-game-stub__title{
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -0.2px;
+}
+
+.tg-game-stub__sub{
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+  font-weight: 800;
+}
