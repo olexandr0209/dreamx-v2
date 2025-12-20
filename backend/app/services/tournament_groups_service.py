@@ -27,7 +27,7 @@ def _parse_start_at(v) -> datetime | None:
         return None
 
 def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None = None) -> dict:
-    # ✅ щоб авто-open за 5 хв і формування працювали навіть якщо юзер тисне Join першим
+    # ✅ щоб авто-open/locking/forming працювали навіть якщо юзер тисне Join першим
     tick_tournament(tournament_id)
 
     t = db.get_tournament(tournament_id)
@@ -37,6 +37,7 @@ def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None =
     start_at = _parse_start_at(t.get("start_at"))
     now_utc = datetime.now(timezone.utc)
 
+    # ✅ таймінги (5 хв до старту + 30 сек після)
     if start_at:
         open_at = start_at - timedelta(seconds=JOIN_OPEN_BEFORE_SEC)
         lock_at = start_at + timedelta(seconds=JOIN_GRACE_AFTER_START_SEC)
@@ -46,6 +47,39 @@ def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None =
 
         if now_utc >= lock_at:
             return {"ok": False, "error": "join_closed"}
+
+    # ✅ реєстрація має бути відкрита
+    if t.get("status") != "open":
+        return {"ok": False, "error": "registration_closed"}
+
+    # ✅ приватний код
+    if t.get("access_type") == "private":
+        real = (t.get("join_code") or "").strip()
+        if not join_code or join_code.strip() != real:
+            return {"ok": False, "error": "bad_join_code"}
+
+    stage = db.ensure_stage(tournament_id, 1, status="pending")
+    stage_id = int(stage["id"])
+
+    # ✅ заборона join після старту stage / після створення груп
+    st_now = db.get_stage(tournament_id, 1)
+    if st_now and st_now.get("status") != "pending":
+        return {"ok": False, "error": "already_started"}
+    if st_now and db.stage_has_groups(int(st_now["id"])):
+        return {"ok": False, "error": "already_started"}
+
+    maxp = int(t.get("max_participants") or 64)
+    cur = db.count_stage_players(stage_id)
+
+    if cur >= maxp:
+        # idempotent join: якщо юзер вже є — ок
+        players = db.list_stage_players(stage_id)
+        if tg_user_id in players:
+            return {"ok": True, "stage_id": stage_id}
+        return {"ok": False, "error": "tournament_full"}
+
+    db.add_stage_player(stage_id, tg_user_id)
+    return {"ok": True, "stage_id": stage_id}
 
 
 def leave_tournament(tournament_id: int, tg_user_id: int) -> dict:
