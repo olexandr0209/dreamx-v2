@@ -12,7 +12,6 @@
 
   const elStatus = $("pt-status");
   const elStatusText = $("pt-status-text");
-  const elBubble = $("pt-bubble");
 
   const elPlayersTitle = $("pt-players-title");
   const elCount = $("pt-count");
@@ -25,13 +24,8 @@
   let redirectTimer = null;
 
   /**
-   * ✅ State model (backend-friendly)
-   * Потім просто заміниш makeStubState() + timers на API poll:
-   * - phase: "countdown" | "forming" | "group_ready"
-   * - seconds_left, seconds_total
-   * - players_live (тільки під час countdown)
-   * - players_all (фіксується коли countdown закінчився)
-   * - group: { title, members } (з бекенду коли групи готові)
+   * ✅ Backend-friendly state model
+   * phase: "countdown" | "forming" | "group_ready"
    */
   const state = {
     ok: true,
@@ -47,7 +41,7 @@
     players_live: [],
     players_all: [],
 
-    group: null, // { title: "Твоя група A1", members: [...] }
+    group: null, // { title, members }
   };
 
   function readParams() {
@@ -103,9 +97,7 @@
 
     // defaults
     hideTimerBlock();
-
     if (elStatus) elStatus.hidden = true;
-    if (elBubble) elBubble.hidden = true;
 
     // phase rendering
     if (state.phase === "countdown") {
@@ -135,15 +127,12 @@
     }
 
     if (state.phase === "group_ready") {
-      // ✅ показуємо саме МОЮ групу
       const groupTitle = state.group?.title || "Твоя група A1";
       const members = state.group?.members || [];
 
       if (elStatus) elStatus.hidden = false;
+      if (elStatusText) elStatusTextContent = undefined; // safeguard, will set below
       if (elStatusText) elStatusText.textContent = groupTitle;
-
-      // маленький кружок — тільки тут
-      if (elBubble) elBubble.hidden = false;
 
       if (elPlayersTitle) elPlayersTitle.textContent = "Гравці твоєї групи";
       if (elNote) elNote.textContent = "Група сформована (заглушка).";
@@ -210,7 +199,6 @@
       applyState();
 
       if (left <= 0) {
-        // move to forming
         state.seconds_left = 0;
 
         // freeze ALL players once
@@ -225,7 +213,6 @@
         applyState();
 
         // ✅ STUB waiting for backend group creation (5 sec for now)
-        // later: replace with polling backend until group_ready
         waitGroupsFromBackendStub();
       }
     }, 200);
@@ -233,9 +220,7 @@
 
   // ---- STUB: backend would respond with group data ----
   function waitGroupsFromBackendStub() {
-    // NOTE: This timer simulates "waiting until DB formed groups"
     formingWaitTimer = setTimeout(() => {
-      // Build "my group" stub from all players (keep "Ти" inside)
       const all = state.players_all.slice();
       const me = all.find(x => x.tag === "@you") || { name: "Ти", tag: "@you" };
 
@@ -250,7 +235,7 @@
       state.phase = "group_ready";
       applyState();
 
-      // ✅ keep your previous idea: after 3 sec -> game stub screen
+      // after 3 sec -> game stub screen
       redirectTimer = setTimeout(() => {
         window.location.href = "./public_game_stub.html";
       }, 3000);
