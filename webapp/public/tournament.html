@@ -18,10 +18,22 @@
     <!-- TOP BAR -->
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
+
+        <!-- ✅ BACK -->
+        <a class="tg-topbar__back" href="./index.html" aria-label="Назад на головну">
+          <span class="tg-topbar__backIcon">←</span>
+          <span class="tg-topbar__backText">Назад</span>
+        </a>
+
+        <!-- BRAND -->
         <div class="tg-topbar__brand">
           <div class="tg-logo">DX</div>
           <div class="tg-topbar__title">DreamX</div>
         </div>
+
+        <!-- spacer for symmetry -->
+        <div class="tg-topbar__right"></div>
+
       </div>
     </header>
 
@@ -66,11 +78,10 @@
           </div>
 
           <div class="tg-public-list" id="tg-public-list"></div>
-
           <div class="tg-footnote" id="tg-find-note"></div>
         </section>
 
-        <!-- BELOW: залишаємо твої інші екрани як було (логіка турніру не ламається) -->
+        <!-- BELOW: existing screens -->
         <section class="tg-screen" id="scr-registration" hidden>
           <div class="tg-big" id="tg-reg-title">Реєстрація</div>
 
