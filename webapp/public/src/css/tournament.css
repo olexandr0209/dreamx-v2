@@ -355,3 +355,86 @@
 
 .tg-error { margin-top: 10px; font-size: 13px; color: rgba(0,0,0,0.75); white-space: pre-wrap; }
 .tg-footnote { margin-top: 10px; font-size: 12px; color: rgba(0,0,0,0.55); }
+
+
+
+/* ✅ NEW: Public details screen */
+
+.tg-public-head {
+  padding: 10px 2px 14px;
+  text-align: center;
+}
+
+.tg-public-title {
+  font-size: 30px;
+  font-weight: 950;
+  letter-spacing: -0.3px;
+  line-height: 1.1;
+}
+
+.tg-public-org {
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(0,0,0,0.60);
+  font-weight: 800;
+}
+
+.tg-public-org__u {
+  color: rgba(0,0,0,0.85);
+  font-weight: 950;
+}
+
+.tg-public-body {
+  margin-top: 6px;
+}
+
+.tg-public-timer {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+}
+
+.tg-public-timer__ring {
+  width: 160px;
+  height: 160px;
+}
+
+.tg-public-timer__ring .tg-ring__inner {
+  width: 132px;
+  height: 132px;
+}
+
+.tg-public-timer__hint {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.55);
+}
+
+.tg-public-players__list {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tg-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+}
+
+.tg-player__name {
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.tg-player__tag {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(0,0,0,0.55);
+}
