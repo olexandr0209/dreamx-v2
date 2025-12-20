@@ -2,6 +2,11 @@
 
 .dx-tournament { padding: 0; }
 
+/* ✅ FIX: щоб input ніколи не вилазив за рамки */
+*, *::before, *::after { box-sizing: border-box; }
+
+.tg-input { max-width: 100%; display: block; }
+
 /* Soft background */
 .dx-content.dx-tournament {
   background: radial-gradient(1200px 500px at 50% -120px, rgba(0,0,0,0.06), transparent 60%),
@@ -15,14 +20,58 @@
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
-.tg-topbar__inner { justify-content: center; padding: 12px 14px; }
+/* ✅ змінюємо лейаут: back — brand — spacer */
+.tg-topbar__inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 12px 14px;
+}
 
 .tg-topbar__brand {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-self: center;
 }
 
+.tg-topbar__right { justify-self: end; }
+
+/* ✅ Back button */
+.tg-topbar__back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: rgba(0,0,0,0.85);
+  font-weight: 900;
+  font-size: 13px;
+  padding: 10px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.75);
+  box-shadow: 0 10px 22px rgba(0,0,0,0.06);
+  transition: transform .06s ease, box-shadow .12s ease;
+}
+
+.tg-topbar__back:hover { box-shadow: 0 14px 30px rgba(0,0,0,0.09); }
+.tg-topbar__back:active { transform: translateY(1px) scale(0.995); }
+
+.tg-topbar__backIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.06);
+}
+
+@media (max-width: 360px) {
+  .tg-topbar__backText { display: none; }
+}
+
+/* Brand */
 .tg-logo {
   width: 34px;
   height: 34px;
@@ -50,9 +99,7 @@
 }
 
 /* Page head */
-.tg-head {
-  padding: 10px 2px 14px;
-}
+.tg-head { padding: 10px 2px 14px; }
 
 .tg-head__title {
   font-size: 28px;
@@ -165,9 +212,7 @@
   box-shadow: 0 14px 30px rgba(0,0,0,0.18);
 }
 
-.tg-btn--primary:hover {
-  box-shadow: 0 18px 42px rgba(0,0,0,0.22);
-}
+.tg-btn--primary:hover { box-shadow: 0 18px 42px rgba(0,0,0,0.22); }
 
 /* Divider */
 .tg-divider {
@@ -215,10 +260,7 @@
   transition: transform .06s ease, box-shadow .12s ease;
 }
 
-.tg-public-item:hover {
-  box-shadow: 0 12px 28px rgba(0,0,0,0.10);
-}
-
+.tg-public-item:hover { box-shadow: 0 12px 28px rgba(0,0,0,0.10); }
 .tg-public-item:active { transform: translateY(1px); }
 
 .tg-public-item__title {
@@ -246,7 +288,7 @@
   margin-top: 6px;
 }
 
-/* Timer, ring, group, game — твій старий стиль залишаємо сумісним */
+/* Timer, ring, group, game — сумісність */
 .tg-timer { margin-top: 10px; }
 .tg-timer__label { font-size: 12px; color: rgba(0,0,0,0.55); }
 .tg-timer__value { font-size: 40px; font-weight: 950; margin-top: 6px; }
