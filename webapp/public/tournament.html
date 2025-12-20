@@ -19,21 +19,17 @@
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
 
-        <!-- ✅ BACK (розумний: якщо ми в public details — вертає на список; інакше на index.html) -->
         <a class="tg-topbar__back" id="tg-top-back" href="./index.html" aria-label="Назад">
           <span class="tg-topbar__backIcon">←</span>
           <span class="tg-topbar__backText">Назад</span>
         </a>
 
-        <!-- BRAND -->
         <div class="tg-topbar__brand">
           <div class="tg-logo">DX</div>
           <div class="tg-topbar__title">DreamX</div>
         </div>
 
-        <!-- spacer -->
         <div class="tg-topbar__right"></div>
-
       </div>
     </header>
 
@@ -41,15 +37,13 @@
     <main class="dx-content dx-tournament">
       <div class="tg-wrap">
 
-        <!-- ✅ SCREEN: FIND (private + public list) -->
+        <!-- SCREEN: FIND -->
         <section class="tg-screen" id="scr-find">
-          <!-- PAGE TITLE -->
           <section class="tg-head">
             <div class="tg-head__title">Tournaments</div>
             <div class="tg-head__sub">Private через код • Public у списку</div>
           </section>
 
-          <!-- PRIVATE -->
           <section class="tg-block">
             <div class="tg-block__top">
               <div class="tg-block__title">Private tournament</div>
@@ -67,12 +61,8 @@
             </div>
           </section>
 
-          <!-- DIVIDER -->
-          <div class="tg-divider">
-            <span>або</span>
-          </div>
+          <div class="tg-divider"><span>або</span></div>
 
-          <!-- PUBLIC -->
           <section class="tg-block">
             <div class="tg-block__top">
               <div class="tg-block__title">Public tournaments</div>
@@ -84,17 +74,22 @@
           </section>
         </section>
 
-        <!-- ✅ NEW SCREEN: PUBLIC DETAILS (UI stub) -->
+        <!-- ✅ PUBLIC DETAILS (UI stub) -->
         <section class="tg-screen" id="scr-public-details" hidden>
           <section class="tg-public-head">
             <div class="tg-public-title" id="tg-public-title">—</div>
             <div class="tg-public-org">
               Організатор: <span class="tg-public-org__u" id="tg-public-organizer">@—</span>
             </div>
+
+            <!-- ✅ NEW: статус (після 30s тут буде “Формуються групи”) -->
+            <div class="tg-public-status" id="tg-public-status" hidden>—</div>
           </section>
 
           <section class="tg-public-body">
-            <div class="tg-public-timer">
+
+            <!-- ✅ NEW: обгорнули таймер в block з id, щоб ховати -->
+            <div class="tg-public-timer" id="tg-public-timer-block">
               <div class="tg-public-timer__ring tg-ring" id="tg-public-ring" style="--p:0;">
                 <div class="tg-ring__inner">
                   <div class="tg-ring__label">Старт через</div>
@@ -117,37 +112,31 @@
                 <div class="tg-footnote">Список оновлюється онлайн (заглушка).</div>
               </div>
             </section>
+
           </section>
         </section>
 
-        <!-- BELOW: existing tournament screens (не чіпаємо логіку) -->
+        <!-- EXISTING SCREENS (як були) -->
         <section class="tg-screen" id="scr-registration" hidden>
           <div class="tg-big" id="tg-reg-title">Реєстрація</div>
-
           <div class="tg-timer" id="tg-start-block" hidden>
             <div class="tg-timer__label">Старт через</div>
             <div class="tg-timer__value" id="tg-start-in">—</div>
           </div>
-
           <div class="tg-gap"></div>
-
           <button id="tg-join" class="tg-btn tg-btn--primary">✅ Join</button>
           <div class="tg-gap-sm"></div>
           <button class="tg-btn" id="tg-menu-1">Меню</button>
-
           <div class="tg-footnote" id="tg-reg-note"></div>
         </section>
 
         <section class="tg-screen" id="scr-waiting" hidden>
           <div class="tg-big">Очікуємо на старт</div>
-
           <div class="tg-count" id="tg-players-count-block" hidden>
             <div class="tg-count__num" id="tg-players-count">—</div>
             <div class="tg-count__label">гравців у турнірі</div>
           </div>
-
           <div class="tg-gap"></div>
-
           <div class="tg-ring-wrap" id="tg-ring-block">
             <div class="tg-ring" id="tg-ring">
               <div class="tg-ring__inner">
@@ -156,19 +145,15 @@
               </div>
             </div>
           </div>
-
           <div class="tg-gap"></div>
-
           <button class="tg-btn" id="tg-menu-2">Меню</button>
           <div class="tg-footnote" id="tg-wait-note"></div>
         </section>
 
         <section class="tg-screen" id="scr-group" hidden>
-
           <div class="tg-card">
             <div class="tg-card__title" id="tg-group-title">Ваша група № —</div>
             <ol class="tg-list" id="tg-group-members"></ol>
-
             <div class="tg-mini-loading" id="tg-group-loading" hidden>
               <div class="tg-mini-loading__dot"></div>
               <div>оновлення…</div>
@@ -206,7 +191,6 @@
           </section>
 
           <div class="tg-gap"></div>
-
           <button class="tg-btn" id="tg-menu-3">Меню</button>
           <div class="tg-footnote" id="tg-group-note"></div>
         </section>
