@@ -33,6 +33,14 @@ def get_tournament(tournament_id: int) -> dict | None:
             )
             return cur.fetchone()
 
+def set_tournament_status(tournament_id: int, status: str) -> None:
+    with get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE tournaments SET status=%s, updated_at=NOW() WHERE id=%s",
+                (status, tournament_id),
+            )
+        conn.commit()
 
 # ---------------------------
 # Stage
