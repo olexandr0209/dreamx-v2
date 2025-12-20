@@ -19,8 +19,8 @@
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
 
-        <!-- ✅ BACK -->
-        <a class="tg-topbar__back" href="./index.html" aria-label="Назад на головну">
+        <!-- ✅ BACK (розумний: якщо ми в public details — вертає на список; інакше на index.html) -->
+        <a class="tg-topbar__back" id="tg-top-back" href="./index.html" aria-label="Назад">
           <span class="tg-topbar__backIcon">←</span>
           <span class="tg-topbar__backText">Назад</span>
         </a>
@@ -31,7 +31,7 @@
           <div class="tg-topbar__title">DreamX</div>
         </div>
 
-        <!-- spacer for symmetry -->
+        <!-- spacer -->
         <div class="tg-topbar__right"></div>
 
       </div>
@@ -41,47 +41,86 @@
     <main class="dx-content dx-tournament">
       <div class="tg-wrap">
 
-        <!-- PAGE TITLE -->
-        <section class="tg-head">
-          <div class="tg-head__title">Tournaments</div>
-          <div class="tg-head__sub">Private через код • Public у списку</div>
+        <!-- ✅ SCREEN: FIND (private + public list) -->
+        <section class="tg-screen" id="scr-find">
+          <!-- PAGE TITLE -->
+          <section class="tg-head">
+            <div class="tg-head__title">Tournaments</div>
+            <div class="tg-head__sub">Private через код • Public у списку</div>
+          </section>
+
+          <!-- PRIVATE -->
+          <section class="tg-block">
+            <div class="tg-block__top">
+              <div class="tg-block__title">Private tournament</div>
+              <div class="tg-badge">CODE</div>
+            </div>
+
+            <div class="tg-field">
+              <div class="tg-label">Join code</div>
+              <input id="tg-join-code" class="tg-input" type="text" placeholder="Напр. ABC123" />
+              <div class="tg-hint">Код генерує creator_bot. Пошук по коду підключимо пізніше.</div>
+            </div>
+
+            <div class="tg-actions">
+              <button id="tg-open" class="tg-btn tg-btn--primary">Open private</button>
+            </div>
+          </section>
+
+          <!-- DIVIDER -->
+          <div class="tg-divider">
+            <span>або</span>
+          </div>
+
+          <!-- PUBLIC -->
+          <section class="tg-block">
+            <div class="tg-block__top">
+              <div class="tg-block__title">Public tournaments</div>
+              <div class="tg-badge tg-badge--soft">LIVE</div>
+            </div>
+
+            <div class="tg-public-list" id="tg-public-list"></div>
+            <div class="tg-footnote" id="tg-find-note"></div>
+          </section>
         </section>
 
-        <!-- PRIVATE -->
-        <section class="tg-block">
-          <div class="tg-block__top">
-            <div class="tg-block__title">Private tournament</div>
-            <div class="tg-badge">CODE</div>
-          </div>
+        <!-- ✅ NEW SCREEN: PUBLIC DETAILS (UI stub) -->
+        <section class="tg-screen" id="scr-public-details" hidden>
+          <section class="tg-public-head">
+            <div class="tg-public-title" id="tg-public-title">—</div>
+            <div class="tg-public-org">
+              Організатор: <span class="tg-public-org__u" id="tg-public-organizer">@—</span>
+            </div>
+          </section>
 
-          <div class="tg-field">
-            <div class="tg-label">Join code</div>
-            <input id="tg-join-code" class="tg-input" type="text" placeholder="Напр. ABC123" />
-            <div class="tg-hint">Код генерує creator_bot. Відкриття по коду зробимо в наступному кроці.</div>
-          </div>
+          <section class="tg-public-body">
+            <div class="tg-public-timer">
+              <div class="tg-public-timer__ring tg-ring" id="tg-public-ring" style="--p:0;">
+                <div class="tg-ring__inner">
+                  <div class="tg-ring__label">Старт через</div>
+                  <div class="tg-ring__value" id="tg-public-time">00:30</div>
+                </div>
+              </div>
+              <div class="tg-public-timer__hint" id="tg-public-timer-hint">Тестовий відлік (заглушка)</div>
+            </div>
 
-          <div class="tg-actions">
-            <button id="tg-open" class="tg-btn tg-btn--primary">Open private</button>
-          </div>
+            <div class="tg-gap"></div>
+
+            <section class="tg-block">
+              <div class="tg-block__top">
+                <div class="tg-block__title">Учасники</div>
+                <div class="tg-badge tg-badge--soft" id="tg-public-count">0</div>
+              </div>
+
+              <div class="tg-public-players">
+                <div class="tg-public-players__list" id="tg-public-players"></div>
+                <div class="tg-footnote">Список оновлюється онлайн (заглушка).</div>
+              </div>
+            </section>
+          </section>
         </section>
 
-        <!-- DIVIDER -->
-        <div class="tg-divider">
-          <span>або</span>
-        </div>
-
-        <!-- PUBLIC -->
-        <section class="tg-block">
-          <div class="tg-block__top">
-            <div class="tg-block__title">Public tournaments</div>
-            <div class="tg-badge tg-badge--soft">LIVE</div>
-          </div>
-
-          <div class="tg-public-list" id="tg-public-list"></div>
-          <div class="tg-footnote" id="tg-find-note"></div>
-        </section>
-
-        <!-- BELOW: existing screens -->
+        <!-- BELOW: existing tournament screens (не чіпаємо логіку) -->
         <section class="tg-screen" id="scr-registration" hidden>
           <div class="tg-big" id="tg-reg-title">Реєстрація</div>
 
