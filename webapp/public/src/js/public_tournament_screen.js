@@ -5,8 +5,8 @@
   const elTitle = $("pt-title");
   const elOrg = $("pt-org");
 
-  const elTimer = $("pt-timer");
-  const elRing = $("pt-ring");
+  const elTimer = $("pt-timer");      // wrapper for big ring
+  const elRing = $("pt-ring");        // ring itself
   const elTime = $("pt-time");
   const elTimerNote = $("pt-timer-note");
 
@@ -21,14 +21,22 @@
 
   let tickTimer = null;
   let playersTimer = null;
-  let phaseTimer = null;
+  let formingWaitTimer = null;
+  let redirectTimer = null;
 
-  // ✅ один state обʼєкт — потім просто підміняємо на дані з API
-  // phase: countdown -> forming -> group_ready -> redirect
+  /**
+   * ✅ State model (backend-friendly)
+   * Потім просто заміниш makeStubState() + timers на API poll:
+   * - phase: "countdown" | "forming" | "group_ready"
+   * - seconds_left, seconds_total
+   * - players_live (тільки під час countdown)
+   * - players_all (фіксується коли countdown закінчився)
+   * - group: { title, members } (з бекенду коли групи готові)
+   */
   const state = {
     ok: true,
-    phase: "countdown",
     public_id: null,
+    phase: "countdown",
 
     tournament_name: "Public tournament",
     organizer: "@telegram_account",
@@ -37,9 +45,9 @@
     seconds_left: 30,
 
     players_live: [],
-    players_frozen: [],
+    players_all: [],
 
-    group_title: "Твоя група 1а",
+    group: null, // { title: "Твоя група A1", members: [...] }
   };
 
   function readParams() {
@@ -68,6 +76,7 @@
     if (elCount) elCount.textContent = String(arr.length);
 
     if (!elPlayers) return;
+
     elPlayers.innerHTML = arr.map((p) => `
       <div class="tg-player">
         <div class="tg-player__name">${p.name}</div>
@@ -76,59 +85,70 @@
     `).join("");
   }
 
+  function hideTimerBlock() {
+    // ✅ гарантія що велике кільце реально зникло
+    if (elTimer) elTimer.hidden = true;
+    if (elRing) elRing.hidden = true;
+  }
+
+  function showTimerBlock() {
+    if (elTimer) elTimer.hidden = false;
+    if (elRing) elRing.hidden = false;
+  }
+
   function applyState() {
     // header
     if (elTitle) elTitle.textContent = state.tournament_name || "—";
     if (elOrg) elOrg.textContent = state.organizer || "@telegram_account";
 
-    // defaults (важливо щоб нічого не висіло)
-    if (elBubble) elBubble.hidden = true;
-    if (elStatus) elStatus.hidden = true;
+    // defaults
+    hideTimerBlock();
 
+    if (elStatus) elStatus.hidden = true;
+    if (elBubble) elBubble.hidden = true;
+
+    // phase rendering
     if (state.phase === "countdown") {
-      // ✅ велике коло видно тільки тут
-      if (elTimer) elTimer.hidden = false;
+      showTimerBlock();
 
       if (elTime) elTime.textContent = fmtTime(state.seconds_left);
       setRingProgress(state.seconds_total, state.seconds_left);
 
+      if (elTimerNote) elTimerNote.textContent = "Онлайн реєстрація (заглушка)";
       if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
       if (elNote) elNote.textContent = "Список оновлюється (заглушка).";
-      if (elTimerNote) elTimerNote.textContent = "Онлайн реєстрація (заглушка)";
 
       renderPlayers(state.players_live);
       return;
     }
 
     if (state.phase === "forming") {
-      // ✅ коло зникло
-      if (elTimer) elTimer.hidden = true;
-
-      // ✅ статус показали
+      // ✅ без кільця + список НЕ оновлюється
       if (elStatus) elStatus.hidden = false;
       if (elStatusText) elStatusText.textContent = "Реєстрація завершена! Формуються групи";
 
       if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
-      if (elNote) elNote.textContent = "Список заморожено (заглушка).";
+      if (elNote) elNote.textContent = "Список заморожено (очікуємо бекенд).";
 
-      // ✅ список вже frozen і не рухається
-      renderPlayers(state.players_frozen);
+      renderPlayers(state.players_all);
       return;
     }
 
     if (state.phase === "group_ready") {
-      if (elTimer) elTimer.hidden = true;
+      // ✅ показуємо саме МОЮ групу
+      const groupTitle = state.group?.title || "Твоя група A1";
+      const members = state.group?.members || [];
 
       if (elStatus) elStatus.hidden = false;
-      if (elStatusText) elStatusText.textContent = state.group_title || "Твоя група 1а";
+      if (elStatusText) elStatusText.textContent = groupTitle;
 
-      // ✅ малий кружок тільки тут
+      // маленький кружок — тільки тут
       if (elBubble) elBubble.hidden = false;
 
-      if (elPlayersTitle) elPlayersTitle.textContent = "Гравці";
-      if (elNote) elNote.textContent = "Група готова (заглушка).";
+      if (elPlayersTitle) elPlayersTitle.textContent = "Гравці твоєї групи";
+      if (elNote) elNote.textContent = "Група сформована (заглушка).";
 
-      renderPlayers(state.players_frozen);
+      renderPlayers(members);
       return;
     }
   }
@@ -140,14 +160,17 @@
     if (playersTimer) clearInterval(playersTimer);
     playersTimer = null;
 
-    if (phaseTimer) clearTimeout(phaseTimer);
-    phaseTimer = null;
+    if (formingWaitTimer) clearTimeout(formingWaitTimer);
+    formingWaitTimer = null;
+
+    if (redirectTimer) clearTimeout(redirectTimer);
+    redirectTimer = null;
   }
 
-  function startCountdown() {
+  // ---- STUB: players join during countdown ----
+  function startCountdownStub() {
     const startedAt = Date.now();
 
-    // ✅ оновлення списку ТІЛЬКИ під час countdown
     const pool = [
       { name: "Andrii", tag: "@andrii" },
       { name: "Ira", tag: "@ira" },
@@ -162,10 +185,10 @@
     state.players_live = [me];
     applyState();
 
+    // list updates only in countdown
     playersTimer = setInterval(() => {
       if (state.phase !== "countdown") return;
 
-      // додаємо по 1 гравцю, не пересортовуємо — щоб не "смикалось"
       const live = [...state.players_live];
 
       if (live.length < 7) {
@@ -187,53 +210,67 @@
       applyState();
 
       if (left <= 0) {
-        // ✅ ЗУПИНЯЄМО countdown
+        // move to forming
         state.seconds_left = 0;
+
+        // freeze ALL players once
+        state.players_all = state.players_live.slice();
+
+        // stop countdown timers
+        if (playersTimer) { clearInterval(playersTimer); playersTimer = null; }
+        if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
+
+        // phase forming
         state.phase = "forming";
-
-        // ✅ заморожуємо список РІВНО тут
-        state.players_frozen = state.players_live.slice();
-
-        // ✅ стоп оновлення списку
-        if (playersTimer) {
-          clearInterval(playersTimer);
-          playersTimer = null;
-        }
-        if (tickTimer) {
-          clearInterval(tickTimer);
-          tickTimer = null;
-        }
-
         applyState();
 
-        // ✅ 5 секунд forming -> group_ready
-        phaseTimer = setTimeout(() => {
-          state.phase = "group_ready";
-          applyState();
-
-          // ✅ 3 секунди -> перехід на заглушку гри
-          phaseTimer = setTimeout(() => {
-            window.location.href = "./public_game_stub.html";
-          }, 3000);
-
-        }, 5000);
+        // ✅ STUB waiting for backend group creation (5 sec for now)
+        // later: replace with polling backend until group_ready
+        waitGroupsFromBackendStub();
       }
     }, 200);
+  }
+
+  // ---- STUB: backend would respond with group data ----
+  function waitGroupsFromBackendStub() {
+    // NOTE: This timer simulates "waiting until DB formed groups"
+    formingWaitTimer = setTimeout(() => {
+      // Build "my group" stub from all players (keep "Ти" inside)
+      const all = state.players_all.slice();
+      const me = all.find(x => x.tag === "@you") || { name: "Ти", tag: "@you" };
+
+      const others = all.filter(x => x.tag !== "@you");
+      const groupMembers = [me, ...others.slice(0, 2)]; // group size 3 for stub
+
+      state.group = {
+        title: "Твоя група A1",
+        members: groupMembers,
+      };
+
+      state.phase = "group_ready";
+      applyState();
+
+      // ✅ keep your previous idea: after 3 sec -> game stub screen
+      redirectTimer = setTimeout(() => {
+        window.location.href = "./public_game_stub.html";
+      }, 3000);
+
+    }, 5000);
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     stopAllTimers();
     readParams();
 
-    // заглушка назви поки
     state.tournament_name = `Public Tournament #${state.public_id}`;
-
-    // старт
     state.phase = "countdown";
     state.seconds_total = 30;
     state.seconds_left = 30;
+    state.players_live = [];
+    state.players_all = [];
+    state.group = null;
 
     applyState();
-    startCountdown();
+    startCountdownStub();
   });
 })();
