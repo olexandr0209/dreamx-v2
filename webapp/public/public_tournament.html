@@ -1,0 +1,87 @@
+<!-- public_tournament.html -->
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX • Public Tournament</title>
+
+  <link rel="stylesheet" href="/src/css/tokens.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+  <link rel="stylesheet" href="/src/css/tournament.css" />
+</head>
+
+<body class="dx theme-light">
+  <div class="dx-app">
+
+    <header class="dx-topbar tg-topbar">
+      <div class="dx-topbar__inner tg-topbar__inner">
+
+        <a class="tg-topbar__back" href="./tournament.html" aria-label="Назад до турнірів">
+          <span class="tg-topbar__backIcon">←</span>
+          <span class="tg-topbar__backText">Турніри</span>
+        </a>
+
+        <div class="tg-topbar__brand">
+          <div class="tg-logo">DX</div>
+          <div class="tg-topbar__title">Public</div>
+        </div>
+
+        <div class="tg-topbar__right"></div>
+      </div>
+    </header>
+
+    <main class="dx-content dx-tournament">
+      <div class="tg-wrap">
+
+        <!-- TITLE -->
+        <section class="pt-head">
+          <div class="pt-title" id="pt-title">—</div>
+          <div class="pt-org">Організатор: <span class="pt-org__u" id="pt-org">@telegram_account</span></div>
+        </section>
+
+        <!-- BIG RING (тільки countdown) -->
+        <section class="pt-timer" id="pt-timer">
+          <div class="tg-ring pt-ring" id="pt-ring" style="--p:0;">
+            <div class="tg-ring__inner">
+              <div class="tg-ring__label">Старт через</div>
+              <div class="tg-ring__value" id="pt-time">00:30</div>
+            </div>
+          </div>
+          <div class="tg-footnote pt-timer-note" id="pt-timer-note">Онлайн реєстрація (заглушка)</div>
+        </section>
+
+        <!-- STATUS (forming / group_ready) -->
+        <section class="pt-status" id="pt-status" hidden>
+          <div class="pt-status__text" id="pt-status-text">—</div>
+          <div class="pt-bubble" id="pt-bubble" hidden>●</div>
+        </section>
+
+        <div class="tg-gap"></div>
+
+        <!-- PLAYERS -->
+        <section class="tg-block">
+          <div class="tg-block__top">
+            <div class="tg-block__title" id="pt-players-title">Учасники</div>
+            <div class="tg-badge tg-badge--soft" id="pt-count">0</div>
+          </div>
+
+          <div id="pt-players"></div>
+          <div class="tg-footnote" id="pt-note">Список оновлюється (заглушка).</div>
+        </section>
+
+      </div>
+    </main>
+
+    <footer class="dx-bottombar">
+      <div class="dx-bottombar__inner">
+        <div class="dx-bottombar__label">Created by Oleksandr Krychylskyi</div>
+      </div>
+    </footer>
+
+  </div>
+
+  <script src="/src/js/dreamx_core.js?v=1"></script>
+  <script src="/src/js/public_tournament_screen.js?v=1"></script>
+</body>
+</html>
