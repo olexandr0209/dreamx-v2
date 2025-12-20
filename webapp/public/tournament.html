@@ -18,7 +18,10 @@
     <!-- TOP BAR -->
     <header class="dx-topbar tg-topbar">
       <div class="dx-topbar__inner tg-topbar__inner">
-        <div class="tg-topbar__title">DreamX</div>
+        <div class="tg-topbar__brand">
+          <div class="tg-logo">DX</div>
+          <div class="tg-topbar__title">DreamX</div>
+        </div>
       </div>
     </header>
 
@@ -26,35 +29,48 @@
     <main class="dx-content dx-tournament">
       <div class="tg-wrap">
 
-        <!-- HERO -->
-        <section class="tg-hero">
-          <div class="tg-hero__kicker">Турнір</div>
-          <div class="tg-hero__name" id="tg-tname">—</div>
-          <div class="tg-hero__meta" id="tg-tmeta">Організатор: —</div>
+        <!-- PAGE TITLE -->
+        <section class="tg-head">
+          <div class="tg-head__title">Tournaments</div>
+          <div class="tg-head__sub">Private через код • Public у списку</div>
         </section>
 
-        <!-- SCREEN: FIND/OPEN -->
-        <section class="tg-screen" id="scr-find">
-          <div class="tg-panel">
+        <!-- PRIVATE -->
+        <section class="tg-block">
+          <div class="tg-block__top">
+            <div class="tg-block__title">Private tournament</div>
+            <div class="tg-badge">CODE</div>
+          </div>
+
+          <div class="tg-field">
             <div class="tg-label">Join code</div>
             <input id="tg-join-code" class="tg-input" type="text" placeholder="Напр. ABC123" />
-            <div class="tg-hint">Для private турніру введи код від creator_bot. Для public — не потрібно.</div>
+            <div class="tg-hint">Код генерує creator_bot. Відкриття по коду зробимо в наступному кроці.</div>
+          </div>
 
-            <div class="tg-gap"></div>
-
-            <button id="tg-open" class="tg-btn tg-btn--primary">Відкрити</button>
-
-            <div class="tg-gap"></div>
-
-            <!-- ✅ NEW: PUBLIC LIST (заглушка) -->
-            <div class="tg-subtitle">Публічні турніри</div>
-            <div class="tg-public-list" id="tg-public-list"></div>
-
-            <div class="tg-footnote" id="tg-find-note"></div>
+          <div class="tg-actions">
+            <button id="tg-open" class="tg-btn tg-btn--primary">Open private</button>
           </div>
         </section>
 
-        <!-- SCREEN: REGISTRATION -->
+        <!-- DIVIDER -->
+        <div class="tg-divider">
+          <span>або</span>
+        </div>
+
+        <!-- PUBLIC -->
+        <section class="tg-block">
+          <div class="tg-block__top">
+            <div class="tg-block__title">Public tournaments</div>
+            <div class="tg-badge tg-badge--soft">LIVE</div>
+          </div>
+
+          <div class="tg-public-list" id="tg-public-list"></div>
+
+          <div class="tg-footnote" id="tg-find-note"></div>
+        </section>
+
+        <!-- BELOW: залишаємо твої інші екрани як було (логіка турніру не ламається) -->
         <section class="tg-screen" id="scr-registration" hidden>
           <div class="tg-big" id="tg-reg-title">Реєстрація</div>
 
@@ -72,7 +88,6 @@
           <div class="tg-footnote" id="tg-reg-note"></div>
         </section>
 
-        <!-- SCREEN: WAITING -->
         <section class="tg-screen" id="scr-waiting" hidden>
           <div class="tg-big">Очікуємо на старт</div>
 
@@ -98,7 +113,6 @@
           <div class="tg-footnote" id="tg-wait-note"></div>
         </section>
 
-        <!-- SCREEN: GROUP + GAME -->
         <section class="tg-screen" id="scr-group" hidden>
 
           <div class="tg-card">
@@ -113,7 +127,6 @@
 
           <div class="tg-gap"></div>
 
-          <!-- GAME BLOCK -->
           <section class="tg-game" id="tg-game" hidden>
             <div class="tg-game__row">
               <div class="tg-pick">
@@ -148,7 +161,6 @@
           <div class="tg-footnote" id="tg-group-note"></div>
         </section>
 
-        <!-- SCREEN: ERROR -->
         <section class="tg-screen" id="scr-error" hidden>
           <div class="tg-big">Повідомлення</div>
           <div class="tg-error" id="tg-error-text">—</div>
@@ -159,7 +171,6 @@
       </div>
     </main>
 
-    <!-- BOTTOM BAR -->
     <footer class="dx-bottombar">
       <div class="dx-bottombar__inner">
         <div class="dx-bottombar__label">Created by Oleksandr Krychylskyi</div>
