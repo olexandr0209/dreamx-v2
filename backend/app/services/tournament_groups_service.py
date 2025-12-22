@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone, timedelta
 
+from psycopg2.extras import RealDictCursor  # ✅ NEW (мінімально необхідно)
+
 from app.db import tournament_groups_db as db
 from app.engine.tournament_groups.grouping import make_groups
 from app.engine.tournament_groups.state_machine import total_rounds_for_group, round_robin_rounds
@@ -601,15 +603,16 @@ def _maybe_advance_group_after_match(group_id: int) -> None:
     # якщо всі матчі поточного round finished -> наступний round
     groups = None  # не треба
 
-    # ✅ FIX: cursor має бути dict (RealDictCursor), інакше g["current_round"] впаде
-    from psycopg2.extras import RealDictCursor
     from app.db.connection import get_conn
 
     # дістанемо group через list_stage_groups — нам треба stage_id, але простіше:
     # зробимо невеликий select тут (не чіпаючи інші файли)
     with get_conn() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT id, current_round, total_rounds, status FROM tournament_groups WHERE id=%s", (group_id,))
+            cur.execute(
+                "SELECT id, current_round, total_rounds, status FROM tournament_groups WHERE id=%s",
+                (group_id,),
+            )
             g = cur.fetchone()
             if not g:
                 return
@@ -627,7 +630,8 @@ def _maybe_advance_group_after_match(group_id: int) -> None:
                 """
                 SELECT COUNT(*) AS c
                 FROM tournament_group_matches
-                WHERE group_id=%s AND match_kind='group' AND tiebreak_no=0 AND round_no=%s AND status!='finished'
+                WHERE group_id=%s AND match_kind='group' AND tiebreak_no=0
+                  AND round_no=%s AND status!='finished'
                 """,
                 (group_id, current_round),
             )
