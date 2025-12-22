@@ -44,7 +44,6 @@
   function setCircle(prefix, idx, text) {
     const el = $(`${prefix}-c${idx}`);
     if (!el) return;
-    // avatar circle contains inner div, for others we replace textContent safely
     if (idx === 0) return; // avatar handled separately
     el.textContent = text;
   }
@@ -89,31 +88,32 @@
     roundNo: 1,
     roundTotal: 3,
 
-    // у кожному раунді 3 гри (як ти описав: 3 кружечки історії)
+    // у кожному раунді 3 гри
     gameInRound: 1,
     gamesPerRound: 3,
 
-    // історія кружечків (1..3)
     opHist: ["—", "—", "—"],
     meHist: ["—", "—", "—"],
 
-    // очки в матчі проти конкретного суперника (останній кружечок)
     opScore: 8,
     meScore: 10,
 
     meTag: "@you",
     opTag: "@opponent",
 
-    // turn timer
     turnTotalSec: 5,
     turnEndsAtMs: 0,
     ticking: false,
     tickTimer: null,
+
+    // NEW: params cache for redirect/back links
+    publicId: "101",
+    org: "@organizator",
   };
 
   function renderMembers(list) {
     if (!elMembers) return;
-    elMembers.innerHTML = (list || []).map((m, i) => `
+    elMembers.innerHTML = (list || []).map((m) => `
       <div class="pg-member">
         <div class="pg-member__name">${m.tag}</div>
         <div class="pg-member__pts">${m.points}</div>
@@ -133,7 +133,6 @@
     setText(elOpTag, state.opTag);
     setText(elMeTag, state.meTag);
 
-    // history circles
     setCircle("pg-op", 1, state.opHist[0]);
     setCircle("pg-op", 2, state.opHist[1]);
     setCircle("pg-op", 3, state.opHist[2]);
@@ -142,7 +141,6 @@
     setCircle("pg-me", 2, state.meHist[1]);
     setCircle("pg-me", 3, state.meHist[2]);
 
-    // scores
     setScore("pg-op", state.opScore);
     setScore("pg-me", state.meScore);
   }
@@ -160,7 +158,6 @@
       if (elTimerFill) elTimerFill.style.setProperty("--p", String(p));
 
       if (leftMs <= 0) {
-        // якщо час вийшов — просто блокуємо хід (пізніше бекенд вирішить що робити)
         stopTurnTimer();
         setMovesEnabled(false);
         if (elNote) elNote.textContent = "Час вийшов (заглушка). Пізніше бекенд вирішить автохід/поразку.";
@@ -181,6 +178,18 @@
     elErr.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
+  // ✅ NEW: redirect to result screen
+  function goToResults() {
+    const url =
+      `./public_game_result.html` +
+      `?public_id=${encodeURIComponent(state.publicId)}` +
+      `&org=${encodeURIComponent(state.org)}` +
+      `&t_name=${encodeURIComponent(state.tName)}` +
+      `&group_no=${encodeURIComponent(state.groupNo)}`;
+
+    window.location.href = url;
+  }
+
   async function onMove(myMove) {
     try {
       if (!MOVE[myMove]) return;
@@ -190,24 +199,20 @@
 
       const myEmoji = MOVE[myMove].emoji;
 
-      // заглушка: опонент робить випадковий хід
       const opMoves = ["rock", "paper", "scissors"];
       const opMove = opMoves[Math.floor(Math.random() * opMoves.length)];
       const opEmoji = MOVE[opMove].emoji;
 
-      // записуємо у кружечок історії (1..3)
       const i = state.gameInRound - 1;
       state.meHist[i] = myEmoji;
       state.opHist[i] = opEmoji;
 
-      // рахунок у матчі
       const w = decideWinner(myMove, opMove);
       if (w === 1) state.meScore += 1;
       if (w === -1) state.opScore += 1;
 
       applyState();
 
-      // коротка пауза і перехід по логіці раундів
       await new Promise(r => setTimeout(r, 700));
 
       if (state.gameInRound < state.gamesPerRound) {
@@ -219,7 +224,6 @@
         return;
       }
 
-      // раунд завершено -> очищаємо 3 кружечки
       if (elNote) elNote.textContent = "Раунд завершено. Очікуємо оновлення (заглушка).";
       await new Promise(r => setTimeout(r, 800));
 
@@ -235,10 +239,13 @@
         return;
       }
 
-      // матч завершено
+      // ✅ MATCH FINISHED -> go to results screen
       applyState();
       setMovesEnabled(false);
-      if (elNote) elNote.textContent = "Матч завершено (заглушка). Пізніше тут буде перехід/очікування.";
+      if (elNote) elNote.textContent = "Матч завершено. Переходимо до результатів…";
+      await new Promise(r => setTimeout(r, 650));
+      goToResults();
+
     } catch (e) {
       showError({ ok: false, error: "client_error", details: String(e?.message || e) });
     }
@@ -253,16 +260,17 @@
   document.addEventListener("DOMContentLoaded", () => {
     const params = readParams();
 
-    // topbar content
+    // cache params for redirect
+    state.publicId = params.publicId;
+    state.org = params.org;
+
     state.tName = params.tName;
     state.organizer = params.org;
 
-    // back link should preserve params
     if (elBack) {
       elBack.href = `./public_tournament.html?public_id=${encodeURIComponent(params.publicId)}&org=${encodeURIComponent(params.org)}`;
     }
 
-    // group content (stub)
     state.groupNo = params.groupNo;
     state.members = [
       { tag: "@GamerOne", points: 10 },
@@ -272,15 +280,12 @@
       { tag: state.meTag, points: 8 },
     ];
 
-    // avatars (stub)
     setAvatar("pg-op", "AVATAR");
     setAvatar("pg-me", "AVATAR");
 
-    // initial render
     applyState();
     bindUi();
 
-    // start first turn
     setMovesEnabled(true);
     if (elNote) elNote.textContent = `Гра ${state.gameInRound}/${state.gamesPerRound} у цьому раунді (заглушка).`;
     startTurnTimer();
