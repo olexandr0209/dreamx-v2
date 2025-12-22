@@ -99,7 +99,6 @@
     hideTimerBlock();
     if (elStatus) elStatus.hidden = true;
 
-    // phase rendering
     if (state.phase === "countdown") {
       showTimerBlock();
 
@@ -131,7 +130,6 @@
       const members = state.group?.members || [];
 
       if (elStatus) elStatus.hidden = false;
-      if (elStatusText) elStatusTextContent = undefined; // safeguard, will set below
       if (elStatusText) elStatusText.textContent = groupTitle;
 
       if (elPlayersTitle) elPlayersTitle.textContent = "Гравці твоєї групи";
@@ -208,7 +206,6 @@
         if (playersTimer) { clearInterval(playersTimer); playersTimer = null; }
         if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
 
-        // phase forming
         state.phase = "forming";
         applyState();
 
