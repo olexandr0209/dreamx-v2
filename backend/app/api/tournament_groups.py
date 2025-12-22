@@ -53,7 +53,6 @@ def tg_leave():
 
 @bp_tg.get("/state")
 def tg_state():
-    # GET /tg/state?tournament_id=1&tg_user_id=123
     try:
         tournament_id = _int(request.args.get("tournament_id"), "tournament_id")
         tg_user_id = _int(request.args.get("tg_user_id"), "tg_user_id")
