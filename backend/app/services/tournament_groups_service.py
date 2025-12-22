@@ -13,6 +13,7 @@ from app.engine.tournament_groups.scoring import decide, points_for
 JOIN_OPEN_BEFORE_SEC = 300   # 5 хв
 JOIN_GRACE_AFTER_START_SEC = 30  # 30 сек після старту
 
+
 def _parse_start_at(v) -> datetime | None:
     if v is None:
         return None
@@ -25,6 +26,7 @@ def _parse_start_at(v) -> datetime | None:
         return datetime.fromisoformat(str(v)).astimezone(timezone.utc)
     except Exception:
         return None
+
 
 def join_tournament(tournament_id: int, tg_user_id: int, join_code: str | None = None) -> dict:
     # ✅ щоб авто-open/locking/forming працювали навіть якщо юзер тисне Join першим
@@ -91,6 +93,7 @@ def leave_tournament(tournament_id: int, tg_user_id: int) -> dict:
     db.remove_stage_player(int(stage["id"]), tg_user_id)
     return {"ok": True}
 
+
 def tick_tournament(tournament_id: int, now_utc: datetime | None = None) -> dict:
     now_utc = now_utc or datetime.now(timezone.utc)
 
@@ -127,6 +130,7 @@ def tick_tournament(tournament_id: int, now_utc: datetime | None = None) -> dict
 
     _progress_all_running_stages(tournament_id)
     return {"ok": True, "status": "ticked"}
+
 
 def _start_stage(tournament_id: int, stage_id: int) -> None:
     # захист: якщо вже є групи — значить старт робили
@@ -226,6 +230,7 @@ def _progress_group(group_id: int) -> None:
     # ✅ ВАЖЛИВО: тут НЕ робимо фонове "сканування" і НЕ ліземо в БД зайвий раз.
     # Просування round/group робиться після кожного завершеного матчу у _maybe_advance_group_after_match().
     return
+
 
 def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     # tick на кожний state (як у PvP polling)
@@ -596,11 +601,14 @@ def _maybe_advance_group_after_match(group_id: int) -> None:
     # якщо всі матчі поточного round finished -> наступний round
     groups = None  # не треба
 
+    # ✅ FIX: cursor має бути dict (RealDictCursor), інакше g["current_round"] впаде
+    from psycopg2.extras import RealDictCursor
+    from app.db.connection import get_conn
+
     # дістанемо group через list_stage_groups — нам треба stage_id, але простіше:
     # зробимо невеликий select тут (не чіпаючи інші файли)
-    from app.db.connection import get_conn
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute("SELECT id, current_round, total_rounds, status FROM tournament_groups WHERE id=%s", (group_id,))
             g = cur.fetchone()
             if not g:
@@ -613,9 +621,8 @@ def _maybe_advance_group_after_match(group_id: int) -> None:
         return
 
     # чи всі матчі цього round вже finished?
-    from app.db.connection import get_conn
     with get_conn() as conn:
-        with conn.cursor() as cur:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT COUNT(*) AS c
