@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX • Public Game</title>
+
+  <link rel="stylesheet" href="/src/css/tokens.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+  <link rel="stylesheet" href="/src/css/public_game.css" />
+</head>
+
+<body class="dx theme-light">
+  <div class="dx-app">
+
+    <!-- TOP BAR -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <a class="dx-back" href="./public_tournament.html" id="pg-back">
+          <span class="dx-back__icon">←</span>
+          <span class="dx-back__text">Назад</span>
+        </a>
+
+        <div class="dx-brand">
+          <div class="dx-brand__logo">DX</div>
+          <div class="dx-brand__text">
+            <div class="dx-brand__title" id="pg-title">Public Match</div>
+            <div class="dx-brand__subtitle" id="pg-sub">1 vs 1</div>
+          </div>
+        </div>
+
+        <div class="dx-chip" id="pg-chip">Live</div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="dx-content dx-public-game">
+      <div class="dx-wrap">
+
+        <!-- Match meta -->
+        <section class="pg-meta">
+          <div class="pg-meta__row">
+            <div class="pg-pill" id="pg-group">Група: A1</div>
+            <div class="pg-pill pg-pill--soft" id="pg-round">Раунд: 1</div>
+          </div>
+
+          <div class="pg-meta__row">
+            <div class="pg-opponent">
+              <div class="pg-opponent__label">Суперник</div>
+              <div class="pg-opponent__name" id="pg-op-name">@opponent</div>
+            </div>
+            <div class="pg-series">
+              <div class="pg-series__label">Серія</div>
+              <div class="pg-series__value" id="pg-series">0 : 0</div>
+              <div class="pg-series__sub" id="pg-game-no">Гра 1 / 5</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Game card -->
+        <section class="pg-card">
+          <div class="pg-picks">
+            <div class="pg-pick">
+              <div class="pg-pick__label">Ти</div>
+              <div class="pg-pick__circle" id="pg-my-pick">—</div>
+              <div class="pg-pick__tag" id="pg-me-tag">@you</div>
+            </div>
+
+            <div class="pg-center">
+              <div class="pg-turn" id="pg-turn">Твій хід</div>
+              <div class="pg-mini" id="pg-mini">Після вибору — чекаємо суперника</div>
+            </div>
+
+            <div class="pg-pick">
+              <div class="pg-pick__label">Суперник</div>
+              <div class="pg-pick__circle" id="pg-op-pick">—</div>
+              <div class="pg-pick__tag" id="pg-op-tag">@opponent</div>
+            </div>
+          </div>
+
+          <div class="pg-actions">
+            <button class="pg-move" data-move="rock">🪨</button>
+            <button class="pg-move" data-move="paper">📄</button>
+            <button class="pg-move" data-move="scissors">✂️</button>
+          </div>
+
+          <div class="pg-foot">
+            <div class="pg-note" id="pg-note">Заглушка. Пізніше підключимо бекенд: state/move.</div>
+          </div>
+        </section>
+
+        <!-- Error -->
+        <pre class="pg-error" id="pg-error" hidden></pre>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/src/js/public_game_screen.js"></script>
+</body>
+</html>
