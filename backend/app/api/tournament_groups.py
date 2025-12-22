@@ -1,92 +1,95 @@
 # backend/app/api/tournament_groups.py
 
-from flask import Blueprint, request, jsonify
+from __future__ import annotations
+
+from flask import Blueprint, jsonify, request
 
 from app.services.tournament_groups_service import (
-    join_tournament, leave_tournament, get_state_for_user, submit_move
+    join_tournament,
+    leave_tournament,
+    get_state_for_user,
+    submit_move,
+    tick_tournament,
 )
 
-bp_tg = Blueprint("tg", __name__, url_prefix="/tg")
+bp_tg = Blueprint("tournament_groups", __name__, url_prefix="/tg")
 
 
-def _as_int(v):
+def _int(v, name: str) -> int:
     try:
         return int(v)
     except Exception:
-        return None
-
-
-# ✅ NEW: універсально дістаємо параметри з JSON / form / query
-def _get_param(name: str, default=None):
-    data = request.get_json(silent=True) or {}
-    if name in data and data[name] is not None:
-        return data[name]
-    v = request.form.get(name)
-    if v is not None:
-        return v
-    v = request.args.get(name)
-    if v is not None:
-        return v
-    return default
-
-
-def _get_tg_user_id():
-    tg = request.headers.get("X-Tg-User-Id") or _get_param("tg_user_id")
-    return _as_int(tg)
-
-
-def _get_tournament_id():
-    tid = _get_param("tournament_id")
-    return _as_int(tid)
+        raise ValueError(f"bad_{name}")
 
 
 @bp_tg.post("/join")
-def api_join():
-    tg_user_id = _get_tg_user_id()
-    tournament_id = _get_tournament_id()
-    if not tg_user_id or not tournament_id:
-        return jsonify({"ok": False, "error": "missing_params"}), 400
+def tg_join():
+    payload = request.get_json(silent=True) or {}
+    try:
+        tournament_id = _int(payload.get("tournament_id"), "tournament_id")
+        tg_user_id = _int(payload.get("tg_user_id"), "tg_user_id")
+        join_code = payload.get("join_code")
+        res = join_tournament(tournament_id, tg_user_id, join_code)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
-    code = (_get_param("join_code") or "").strip() or None
-    res = join_tournament(tournament_id, tg_user_id, code)
-    code_http = 200 if res.get("ok") else 400
-    return jsonify(res), code_http
+    if not res.get("ok") and res.get("error") == "tournament_not_found":
+        return jsonify(res), 404
+    return jsonify(res), (200 if res.get("ok") else 400)
 
 
 @bp_tg.post("/leave")
-def api_leave():
-    tg_user_id = _get_tg_user_id()
-    tournament_id = _get_tournament_id()
-    if not tg_user_id or not tournament_id:
-        return jsonify({"ok": False, "error": "missing_params"}), 400
-    res = leave_tournament(tournament_id, tg_user_id)
-    code_http = 200 if res.get("ok") else 400
-    return jsonify(res), code_http
+def tg_leave():
+    payload = request.get_json(silent=True) or {}
+    try:
+        tournament_id = _int(payload.get("tournament_id"), "tournament_id")
+        tg_user_id = _int(payload.get("tg_user_id"), "tg_user_id")
+        res = leave_tournament(tournament_id, tg_user_id)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    return jsonify(res), (200 if res.get("ok") else 400)
 
 
 @bp_tg.get("/state")
-def api_state():
-    tg_user_id = _get_tg_user_id()
-    tournament_id = _get_tournament_id()
-    if not tg_user_id or not tournament_id:
-        return jsonify({"ok": False, "error": "missing_params"}), 400
-    return jsonify(get_state_for_user(tournament_id, tg_user_id))
+def tg_state():
+    # GET /tg/state?tournament_id=1&tg_user_id=123
+    try:
+        tournament_id = _int(request.args.get("tournament_id"), "tournament_id")
+        tg_user_id = _int(request.args.get("tg_user_id"), "tg_user_id")
+        res = get_state_for_user(tournament_id, tg_user_id)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if not res.get("ok") and res.get("error") == "tournament_not_found":
+        return jsonify(res), 404
+    return jsonify(res), (200 if res.get("ok") else 400)
 
 
 @bp_tg.post("/move")
-def api_move():
-    tg_user_id = _get_tg_user_id()
-    tournament_id = _get_tournament_id()
-    match_id = _as_int(_get_param("match_id"))
-    move = (_get_param("move") or "").strip()
+def tg_move():
+    payload = request.get_json(silent=True) or {}
+    try:
+        tournament_id = _int(payload.get("tournament_id"), "tournament_id")
+        tg_user_id = _int(payload.get("tg_user_id"), "tg_user_id")
+        match_id = _int(payload.get("match_id"), "match_id")
+        move = (payload.get("move") or "").strip()
+        res = submit_move(tournament_id, tg_user_id, match_id, move)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
 
-    if not tg_user_id or not tournament_id or not match_id or not move:
-        return jsonify({"ok": False, "error": "missing_params"}), 400
+    return jsonify(res), (200 if res.get("ok") else 400)
 
-    # ✅ NEW (safe): базова валідація, щоб не летіло в сервіс
-    if move not in ("rock", "paper", "scissors"):
-        return jsonify({"ok": False, "error": "invalid_move"}), 400
 
-    res = submit_move(tournament_id, tg_user_id, match_id, move)
-    code_http = 200 if res.get("ok") else 400
-    return jsonify(res), code_http
+@bp_tg.post("/tick")
+def tg_tick():
+    payload = request.get_json(silent=True) or {}
+    try:
+        tournament_id = _int(payload.get("tournament_id"), "tournament_id")
+        res = tick_tournament(tournament_id)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+
+    if not res.get("ok") and res.get("error") == "tournament_not_found":
+        return jsonify(res), 404
+    return jsonify(res), (200 if res.get("ok") else 400)
