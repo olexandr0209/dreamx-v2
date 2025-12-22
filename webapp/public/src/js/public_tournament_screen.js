@@ -234,7 +234,7 @@
 
       // after 3 sec -> game stub screen
       redirectTimer = setTimeout(() => {
-        window.location.href = "./public_game_stub.html";
+        window.location.href = `./public_game.html?public_id=${encodeURIComponent(state.public_id)}&group=A1&op=@opponent`;
       }, 3000);
 
     }, 5000);
