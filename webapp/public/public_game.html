@@ -41,7 +41,7 @@
         <section class="pg-card">
           <div class="pg-group-title" id="pg-group-title">Ваша група № 2</div>
           <div class="pg-members" id="pg-members">
-            <!-- JS renders: 2 columns -->
+            <!-- JS renders -->
           </div>
         </section>
 
@@ -56,17 +56,17 @@
 
             <!-- Opponent row -->
             <div class="pg-row">
+              <div class="pg-rowhead">
+                <div class="pg-rowhead__label">Суперник</div>
+                <div class="pg-rowhead__tag" id="pg-op-tag">@opponent</div>
+              </div>
+
               <div class="pg-circles">
                 <div class="pg-circle pg-circle--avatar" id="pg-op-c0"><div class="pg-avatar">AVATAR</div></div>
                 <div class="pg-circle" id="pg-op-c1">—</div>
                 <div class="pg-circle" id="pg-op-c2">—</div>
                 <div class="pg-circle" id="pg-op-c3">—</div>
                 <div class="pg-circle pg-circle--score" id="pg-op-c4">0</div>
-              </div>
-
-              <div class="pg-who">
-                <div class="pg-who__text">Суперник</div>
-                <div class="pg-who__tag" id="pg-op-tag">@opponent</div>
               </div>
             </div>
 
@@ -80,9 +80,9 @@
                 <div class="pg-circle pg-circle--score" id="pg-me-c4">0</div>
               </div>
 
-              <div class="pg-who">
-                <div class="pg-who__text">Ти</div>
-                <div class="pg-who__tag" id="pg-me-tag">@you</div>
+              <div class="pg-rowfoot">
+                <div class="pg-rowfoot__tag" id="pg-me-tag">@you</div>
+                <div class="pg-rowfoot__label">Ти</div>
               </div>
             </div>
 
@@ -119,7 +119,7 @@
       </div>
     </main>
 
-    <!-- ✅ Bottom bar on every screen -->
+    <!-- Bottom bar -->
     <footer class="dx-bottombar">
       <div class="dx-bottombar__inner">Created by Oleksandr Krychylskyi</div>
     </footer>
