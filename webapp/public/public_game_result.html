@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>DreamX • Results</title>
+
+  <link rel="stylesheet" href="/src/css/tokens.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+
+  <!-- reuse existing styles (top/bottom bars + cards + background) -->
+  <link rel="stylesheet" href="/src/css/public_game.css" />
+  <!-- result-only styles -->
+  <link rel="stylesheet" href="/src/css/public_game_result.css" />
+</head>
+
+<body class="dx theme-light">
+  <div class="dx-app">
+
+    <!-- TOP BAR (same) -->
+    <header class="dx-topbar">
+      <div class="dx-topbar__inner">
+        <a class="dx-back" href="./public_tournament.html" id="gr-back">
+          <span class="dx-back__icon">←</span>
+          <span class="dx-back__text">Назад</span>
+        </a>
+
+        <div class="dx-brand">
+          <div class="dx-brand__logo">DX</div>
+          <div class="dx-brand__text">
+            <div class="dx-brand__title" id="gr-title">Турнір BestGamers</div>
+            <div class="dx-brand__subtitle" id="gr-sub">@organizator</div>
+          </div>
+        </div>
+
+        <div class="dx-chip" id="gr-chip">Done</div>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="dx-content dx-public-game">
+      <div class="dx-wrap">
+
+        <!-- GROUP RESULTS CARD -->
+        <section class="pg-card">
+          <div class="gr-head">
+            <div class="gr-head__title" id="gr-group-title">Група A1 • Результати</div>
+            <div class="gr-head__sub">Топ-2 проходять далі</div>
+          </div>
+
+          <div class="gr-list" id="gr-list">
+            <!-- JS renders -->
+          </div>
+        </section>
+
+        <!-- NOTE CARD -->
+        <section class="pg-card gr-note">
+          <div class="gr-note__title">Дякуємо за участь!</div>
+          <div class="gr-note__text">
+            Заглушка. Пізніше тут буде: підготовка до наступного раунду, нові групи, кнопка “Продовжити” тощо.
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- BOTTOM BAR (same, already smaller + light) -->
+    <footer class="dx-bottombar">
+      <div class="dx-bottombar__inner">Created by Oleksandr Krychylskyi</div>
+    </footer>
+
+  </div>
+
+  <script src="/src/js/public_game_result_screen.js"></script>
+</body>
+</html>
