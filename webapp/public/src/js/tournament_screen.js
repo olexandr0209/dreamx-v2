@@ -17,6 +17,7 @@
   let autoJoinDone = false;
 
   const $ = (id) => document.getElementById(id);
+  const setHidden = (el, flag) => { if (el) el.hidden = !!flag; };
 
   const scrFind = $("scr-find");
   const scrReg = $("scr-registration");
@@ -54,13 +55,12 @@
   const elBackFind = $("tg-back-find");
 
   const menuBtns = ["tg-menu-1", "tg-menu-2", "tg-menu-3"].map($).filter(Boolean);
-
   const elPublicList = $("tg-public-list");
 
   function showScreen(which) {
     const all = [scrFind, scrReg, scrWait, scrGroup, scrError].filter(Boolean);
     for (const s of all) s.hidden = true;
-    which.hidden = false;
+    if (which) which.hidden = false;
   }
 
   function fmtTime(sec) {
@@ -82,17 +82,27 @@
     return "—";
   }
 
+  function getMeTgId() {
+    const id = window.DreamX?.getTgUserId?.();
+    if (id) return Number(id);
+    const p = new URLSearchParams(window.location.search);
+    const q = p.get("tg_user_id");
+    return q ? Number(q) : null;
+  }
+
   function renderRegistration(state) {
     showScreen(scrReg);
 
     const joined = !!state?.joined;
     const sec = state?.seconds_to_start;
 
-    if (sec != null && elStartBlock) {
-      elStartBlock.hidden = false;
-      if (elStartIn) elStartIn.textContent = fmtTime(sec);
-    } else if (elStartBlock) {
-      elStartBlock.hidden = true;
+    if (elStartBlock) {
+      if (sec != null) {
+        elStartBlock.hidden = false;
+        if (elStartIn) elStartIn.textContent = fmtTime(sec);
+      } else {
+        elStartBlock.hidden = true;
+      }
     }
 
     if (elJoin) {
@@ -105,11 +115,13 @@
     showScreen(scrWait);
 
     const count = state?.players_count;
-    if (count != null) {
-      elPlayersCountBlock.hidden = false;
-      elPlayersCount.textContent = String(count);
-    } else {
-      elPlayersCountBlock.hidden = true;
+    if (elPlayersCountBlock) {
+      if (count != null) {
+        elPlayersCountBlock.hidden = false;
+        if (elPlayersCount) elPlayersCount.textContent = String(count);
+      } else {
+        elPlayersCountBlock.hidden = true;
+      }
     }
 
     const sec = state?.seconds_to_start;
@@ -131,35 +143,39 @@
     const gNo = state?.group?.group_no ?? "—";
     if (elGroupTitle) elGroupTitle.textContent = `Ваша група № ${gNo}`;
 
-    const members = state?.group_members || [];
-    const me = (window.DreamX?.getTgUserId?.() ? Number(window.DreamX.getTgUserId()) : null);
+    const members = Array.isArray(state?.group_members) ? state.group_members : [];
+    const me = getMeTgId();
 
-    if (!members.length) {
-      elGroupMembers.innerHTML = `<li>—</li>`;
-    } else {
-      elGroupMembers.innerHTML = members.map((m) => {
-        const isMe = me && Number(m.tg_user_id) === Number(me);
-        const cls = isMe ? ` class="me"` : "";
-        const label = m.username ? `@${m.username}` : `@${m.tg_user_id}`;
-        return `<li${cls}>${label}</li>`;
-      }).join("");
+    if (elGroupMembers) {
+      if (!members.length) {
+        elGroupMembers.innerHTML = `<li>—</li>`;
+      } else {
+        elGroupMembers.innerHTML = members.map((m) => {
+          const isMe = me != null && Number(m.tg_user_id) === Number(me);
+          const cls = isMe ? ` class="me"` : "";
+          const label = m.username ? `@${m.username}` : `@${m.tg_user_id}`;
+          return `<li${cls}>${label}</li>`;
+        }).join("");
+      }
     }
 
     const match = state?.match || null;
 
     if (!match) {
-      elGame.hidden = true;
-      elGroupLoading.hidden = false;
+      setHidden(elGame, true);
+      setHidden(elGroupLoading, false);
       setMovesEnabled(false);
       lastMatchId = null;
       lastNeedMove = false;
       return;
     }
 
-    elGroupLoading.hidden = true;
-    elGame.hidden = false;
+    setHidden(elGroupLoading, true);
+    setHidden(elGame, false);
 
-    lastMatchId = Number(match.id);
+    lastMatchId = match?.id != null ? Number(match.id) : null;
+    if (!Number.isFinite(lastMatchId)) lastMatchId = null;
+
     lastNeedMove = !!match.need_move;
 
     const youP1 = !!match.you_are_p1;
@@ -328,7 +344,6 @@
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-pub-id");
         const org = btn.getAttribute("data-org") || "@telegram_account";
-        // все що треба під бекенд: public_id (потім по ньому тягнемо state)
         window.location.href = `./public_tournament.html?public_id=${encodeURIComponent(id)}&org=${encodeURIComponent(org)}`;
       });
     });
