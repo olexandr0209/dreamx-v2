@@ -1,0 +1,160 @@
+/* webapp/public/src/css/public_game_result.css */
+/* Result screen only (uses public_game.css for base + bars + cards) */
+
+.gr-head{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.gr-head__title{
+  font-size: 16px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.85);
+  letter-spacing: -0.1px;
+}
+
+.gr-head__sub{
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.55);
+  white-space: nowrap;
+}
+
+/* list container */
+.gr-list{
+  display: grid;
+  gap: 10px;
+}
+
+/* each row */
+.gr-item{
+  border: 1px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.92);
+  border-radius: 14px;
+  padding: 10px 10px;
+  display: grid;
+  grid-template-columns: 26px 44px 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.gr-rank{
+  font-weight: 950;
+  font-size: 13px;
+  color: rgba(0,0,0,0.75);
+  text-align: center;
+}
+
+/* avatar */
+.gr-avatar{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.06);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.gr-avatar__inner{
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.10);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.70);
+}
+
+/* name + badge */
+.gr-main{
+  min-width: 0;
+}
+
+.gr-tag{
+  font-size: 13px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.85);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gr-badge{
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  margin-top: 6px;
+  border: 1px solid rgba(0,0,0,0.10);
+  background: rgba(0,0,0,0.05);
+  color: rgba(0,0,0,0.70);
+}
+
+.gr-points{
+  text-align: right;
+}
+
+.gr-points__num{
+  font-size: 14px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.85);
+}
+.gr-points__lbl{
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.55);
+}
+
+/* winners highlight (top 2) */
+.gr-item.is-winner{
+  border-color: rgba(0,0,0,0.18);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+}
+
+.gr-item.is-winner .gr-badge{
+  background: rgba(0,0,0,0.10);
+  color: rgba(0,0,0,0.85);
+}
+
+/* note card */
+.gr-note{
+  text-align: center;
+}
+
+.gr-note__title{
+  font-size: 16px;
+  font-weight: 950;
+  color: rgba(0,0,0,0.85);
+}
+
+.gr-note__text{
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.55);
+  line-height: 1.35;
+}
+
+/* small screens (iPhone 8) */
+@media (max-width: 360px){
+  .gr-item{
+    grid-template-columns: 24px 40px 1fr auto;
+    gap: 8px;
+    padding: 9px 9px;
+  }
+  .gr-avatar{ width: 40px; height: 40px; }
+  .gr-avatar__inner{ width: 34px; height: 34px; }
+  .gr-head__sub{ display: none; } /* compact */
+}
