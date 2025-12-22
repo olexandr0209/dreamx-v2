@@ -1,11 +1,9 @@
-/* tournament.css — DreamX Tournament (refined UI) */
+/* tournament.css — DreamX Tournament (refined UI, cleaned) */
 
 .dx-tournament { padding: 0; }
 
-/* ✅ FIX: щоб input ніколи не вилазив за рамки */
+/* Base: safe sizing */
 *, *::before, *::after { box-sizing: border-box; }
-
-.tg-input { max-width: 100%; display: block; }
 
 /* Soft background */
 .dx-content.dx-tournament {
@@ -13,14 +11,16 @@
               linear-gradient(#fafafa, #f5f5f5);
 }
 
-/* Topbar */
+/* ---------------------------
+   TOPBAR
+--------------------------- */
 .tg-topbar {
   background: rgba(255,255,255,0.92);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(0,0,0,0.06);
 }
 
-/* ✅ змінюємо лейаут: back — brand — spacer */
+/* back — brand — spacer */
 .tg-topbar__inner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -37,7 +37,6 @@
 
 .tg-topbar__right { justify-self: end; }
 
-/* ✅ Back button */
 .tg-topbar__back {
   justify-self: start;
   display: inline-flex;
@@ -71,7 +70,6 @@
   .tg-topbar__backText { display: none; }
 }
 
-/* Brand */
 .tg-logo {
   width: 34px;
   height: 34px;
@@ -91,14 +89,42 @@
   letter-spacing: 0.2px;
 }
 
-/* Layout */
+/* ---------------------------
+   LAYOUT / COMMON
+--------------------------- */
 .tg-wrap {
   max-width: 420px;
   margin: 0 auto;
   padding: 18px 16px 22px;
 }
 
-/* Page head */
+.tg-screen[hidden] { display: none !important; }
+
+.tg-gap { height: 14px; }
+.tg-gap-sm { height: 8px; }
+
+.tg-big {
+  font-size: 22px;
+  font-weight: 900;
+  margin-top: 6px;
+}
+
+.tg-footnote {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+}
+
+.tg-error {
+  margin-top: 10px;
+  font-size: 13px;
+  color: rgba(0,0,0,0.75);
+  white-space: pre-wrap;
+}
+
+/* ---------------------------
+   HEAD / BLOCKS
+--------------------------- */
 .tg-head { padding: 10px 2px 14px; }
 
 .tg-head__title {
@@ -114,7 +140,6 @@
   color: rgba(0,0,0,0.55);
 }
 
-/* Blocks */
 .tg-block {
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(0,0,0,0.08);
@@ -154,7 +179,9 @@
   color: rgba(0,0,0,0.75);
 }
 
-/* Fields */
+/* ---------------------------
+   FIELDS / BUTTONS
+--------------------------- */
 .tg-field { margin-top: 10px; }
 
 .tg-label {
@@ -166,6 +193,8 @@
 
 .tg-input {
   width: 100%;
+  max-width: 100%;
+  display: block;
   height: 48px;
   border-radius: 14px;
   border: 1px solid rgba(0,0,0,0.12);
@@ -187,10 +216,8 @@
   line-height: 1.35;
 }
 
-/* Actions */
 .tg-actions { margin-top: 12px; }
 
-/* Buttons */
 .tg-btn {
   width: 100%;
   height: 52px;
@@ -242,7 +269,9 @@
   font-weight: 800;
 }
 
-/* Public list */
+/* ---------------------------
+   PUBLIC LIST (on tournament.html)
+--------------------------- */
 .tg-public-list {
   display: grid;
   gap: 10px;
@@ -276,19 +305,9 @@
   line-height: 1.35;
 }
 
-/* Existing screens keep working */
-.tg-screen[hidden] { display: none !important; }
-
-.tg-gap { height: 14px; }
-.tg-gap-sm { height: 8px; }
-
-.tg-big {
-  font-size: 22px;
-  font-weight: 900;
-  margin-top: 6px;
-}
-
-/* Timer, ring, group, game — сумісність */
+/* ---------------------------
+   TIMER / RING / COUNTS (private + public reuse)
+--------------------------- */
 .tg-timer { margin-top: 10px; }
 .tg-timer__label { font-size: 12px; color: rgba(0,0,0,0.55); }
 .tg-timer__value { font-size: 40px; font-weight: 950; margin-top: 6px; }
@@ -298,15 +317,20 @@
 .tg-count__label { margin-top: 6px; font-size: 12px; color: rgba(0,0,0,0.55); }
 
 .tg-ring-wrap { display: flex; justify-content: center; margin-top: 6px; }
+
 .tg-ring {
   --p: 0;
   width: 136px;
   height: 136px;
   border-radius: 999px;
-  background: conic-gradient(rgba(0,0,0,0.85) calc(var(--p) * 1turn), rgba(0,0,0,0.08) 0);
+  background: conic-gradient(
+    rgba(0,0,0,0.85) calc(var(--p) * 1turn),
+    rgba(0,0,0,0.08) 0
+  );
   display: grid;
   place-items: center;
 }
+
 .tg-ring__inner {
   width: 112px;
   height: 112px;
@@ -317,9 +341,13 @@
   text-align: center;
   border: 1px solid rgba(0,0,0,0.10);
 }
+
 .tg-ring__label { font-size: 11px; color: rgba(0,0,0,0.55); }
 .tg-ring__value { font-size: 24px; font-weight: 950; margin-top: 4px; }
 
+/* ---------------------------
+   GROUP CARD
+--------------------------- */
 .tg-card {
   background: rgba(255,255,255,0.86);
   border-radius: 18px;
@@ -327,13 +355,37 @@
   border: 1px solid rgba(0,0,0,0.10);
   box-shadow: 0 12px 34px rgba(0,0,0,0.08);
 }
+
 .tg-card__title { font-size: 18px; font-weight: 950; margin-bottom: 10px; }
-.tg-list { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.55; }
+
+.tg-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
 .tg-list li.me { font-weight: 950; text-decoration: underline; }
 
-.tg-mini-loading { margin-top: 12px; display: flex; gap: 8px; align-items: center; font-size: 12px; color: rgba(0,0,0,0.60); }
-.tg-mini-loading__dot { width: 8px; height: 8px; border-radius: 999px; background: rgba(0,0,0,0.45); }
+.tg-mini-loading {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: rgba(0,0,0,0.60);
+}
 
+.tg-mini-loading__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.45);
+}
+
+/* ---------------------------
+   GAME (RPS)
+--------------------------- */
 .tg-game {
   background: rgba(255,255,255,0.92);
   border-radius: 18px;
@@ -341,137 +393,70 @@
   padding: 14px;
   box-shadow: 0 12px 30px rgba(0,0,0,0.08);
 }
-.tg-game__row { display: grid; grid-template-columns: 1fr 1.2fr 1fr; gap: 10px; align-items: center; }
-.tg-pick__label { font-size: 11px; color: rgba(0,0,0,0.55); text-align: center; margin-bottom: 6px; }
-.tg-pick__circle { width: 64px; height: 64px; border-radius: 999px; border: 2px solid rgba(0,0,0,0.16); margin: 0 auto; display: grid; place-items: center; font-size: 24px; background: #fff; }
+
+.tg-game__row {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.tg-pick__label {
+  font-size: 11px;
+  color: rgba(0,0,0,0.55);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.tg-pick__circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  border: 2px solid rgba(0,0,0,0.16);
+  margin: 0 auto;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  background: #fff;
+}
+
 .tg-score { text-align: center; }
 .tg-score__label { font-size: 11px; color: rgba(0,0,0,0.55); }
 .tg-score__value { font-size: 28px; font-weight: 950; margin-top: 6px; }
 .tg-score__sub { margin-top: 6px; font-size: 12px; color: rgba(0,0,0,0.55); }
-.tg-turn { margin-top: 10px; text-align: center; font-size: 14px; font-weight: 950; }
-.tg-moves { margin-top: 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.tg-move { height: 56px; border-radius: 14px; border: 1px solid rgba(0,0,0,0.12); background: rgba(0,0,0,0.04); font-size: 24px; cursor: pointer; }
+
+.tg-turn {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.tg-moves {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.tg-move {
+  height: 56px;
+  border-radius: 14px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: rgba(0,0,0,0.04);
+  font-size: 24px;
+  cursor: pointer;
+}
+
 .tg-move:disabled { opacity: 0.45; cursor: not-allowed; }
 
-.tg-error { margin-top: 10px; font-size: 13px; color: rgba(0,0,0,0.75); white-space: pre-wrap; }
-.tg-footnote { margin-top: 10px; font-size: 12px; color: rgba(0,0,0,0.55); }
-
-
-
-/* ✅ NEW: Public details screen */
-
-.tg-public-head {
-  padding: 10px 2px 14px;
-  text-align: center;
-}
-
-.tg-public-title {
-  font-size: 30px;
-  font-weight: 950;
-  letter-spacing: -0.3px;
-  line-height: 1.1;
-}
-
-.tg-public-org {
-  margin-top: 8px;
-  font-size: 13px;
-  color: rgba(0,0,0,0.60);
-  font-weight: 800;
-}
-
-.tg-public-org__u {
-  color: rgba(0,0,0,0.85);
-  font-weight: 950;
-}
-
-.tg-public-body {
-  margin-top: 6px;
-}
-
-.tg-public-timer {
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-  margin-top: 6px;
-  margin-bottom: 10px;
-}
-
-.tg-public-timer__ring {
-  width: 160px;
-  height: 160px;
-}
-
-.tg-public-timer__ring .tg-ring__inner {
-  width: 132px;
-  height: 132px;
-}
-
-.tg-public-timer__hint {
-  font-size: 12px;
-  font-weight: 800;
-  color: rgba(0,0,0,0.55);
-}
-
-.tg-public-players__list {
-  display: grid;
-  gap: 8px;
-  margin-top: 8px;
-}
-
+/* ---------------------------
+   PLAYER ITEM (public page)
+--------------------------- */
 .tg-player {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.08);
-  background: rgba(255,255,255,0.92);
-}
-
-.tg-player__name {
-  font-size: 14px;
-  font-weight: 950;
-}
-
-.tg-player__tag {
-  font-size: 12px;
-  font-weight: 900;
-  color: rgba(0,0,0,0.55);
-}
-
-/* ✅ NEW: status text under organizer */
-.tg-public-status {
-  margin-top: 10px;
-  font-size: 13px;
-  font-weight: 950;
-  color: rgba(0,0,0,0.85);
-  display: inline-block;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.86);
-  box-shadow: 0 10px 26px rgba(0,0,0,0.06);
-}
-
-/* ✅ NEW: маленький кружок зверху */
-.tg-public-bubble{
-  margin: 10px auto 0;
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  font-weight: 950;
-  color: #fff;
-  background: #111;
-  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
-}
-
-/* ✅ Players list items (приємний вигляд, без "руху") */
-.tg-player{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
   gap: 10px;
   padding: 10px 12px;
   border-radius: 14px;
@@ -481,109 +466,51 @@
 
 .tg-player + .tg-player { margin-top: 8px; }
 
-.tg-player__name{
-  font-size: 14px;
-  font-weight: 950;
-}
+.tg-player__name { font-size: 14px; font-weight: 950; }
+.tg-player__tag  { font-size: 12px; font-weight: 800; color: rgba(0,0,0,0.55); }
 
-.tg-player__tag{
-  font-size: 12px;
-  color: rgba(0,0,0,0.55);
-  font-weight: 800;
-}
-
-/* ✅ Game stub screen */
-.tg-game-stub{
-  margin-top: 18px;
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.08);
-  border-radius: 18px;
-  padding: 18px;
-  box-shadow: 0 14px 40px rgba(0,0,0,0.08);
-  text-align: center;
-}
-
-.tg-game-stub__badge{
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  background: #111;
-  color: #fff;
-  margin: 0 auto 10px;
-  display: grid;
-  place-items: center;
-  font-weight: 950;
-  box-shadow: 0 14px 30px rgba(0,0,0,0.18);
-}
-
-.tg-game-stub__title{
-  font-size: 20px;
-  font-weight: 950;
-  letter-spacing: -0.2px;
-}
-
-.tg-game-stub__sub{
-  margin-top: 6px;
-  font-size: 12px;
-  color: rgba(0,0,0,0.55);
-  font-weight: 800;
-}
-
-
-
-/* важливо щоб інпути не вилізали */
-.tg-input { box-sizing: border-box; max-width: 100%; }
-
-
-.tg-player{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  padding:10px 12px;
-  border-radius:14px;
-  border:1px solid rgba(0,0,0,0.08);
-  background: rgba(255,255,255,0.92);
-}
-.tg-player + .tg-player { margin-top: 8px; }
-
-.tg-player__name{ font-size:14px; font-weight:950; }
-.tg-player__tag{ font-size:12px; font-weight:800; color: rgba(0,0,0,0.55); }
-
-.pt-head{
+/* ---------------------------
+   PUBLIC TOURNAMENT PAGE (public_tournament.html)
+--------------------------- */
+.pt-head {
   padding: 10px 2px 14px;
   text-align: center;
 }
-.pt-title{
+
+.pt-title {
   font-size: 30px;
   font-weight: 950;
   letter-spacing: -0.3px;
   line-height: 1.1;
 }
-.pt-org{
+
+.pt-org {
   margin-top: 6px;
   font-size: 13px;
   color: rgba(0,0,0,0.55);
   font-weight: 800;
 }
-.pt-org__u{
+
+.pt-org__u {
   color: rgba(0,0,0,0.85);
   font-weight: 950;
 }
 
-.pt-timer{
+.pt-timer {
   display: grid;
   place-items: center;
   margin-top: 6px;
 }
-.pt-ring{ margin-top: 2px; }
-.pt-timer-note{ text-align: center; }
 
-.pt-status{
+.pt-ring { margin-top: 2px; }
+.pt-timer-note { text-align: center; }
+
+.pt-status {
   margin-top: 10px;
   text-align: center;
 }
-.pt-status__text{
+
+.pt-status__text {
   display: inline-block;
   padding: 10px 12px;
   border-radius: 14px;
@@ -593,7 +520,7 @@
   font-weight: 950;
 }
 
-.pt-bubble{
+.pt-bubble {
   margin: 10px auto 0;
   width: 34px;
   height: 34px;
@@ -605,7 +532,11 @@
   background: #111;
   box-shadow: 0 14px 30px rgba(0,0,0,0.18);
 }
-.tg-game-stub{
+
+/* ---------------------------
+   GAME STUB (public_game_stub.html)
+--------------------------- */
+.tg-game-stub {
   margin-top: 18px;
   background: rgba(255,255,255,0.92);
   border: 1px solid rgba(0,0,0,0.08);
@@ -614,7 +545,8 @@
   box-shadow: 0 14px 40px rgba(0,0,0,0.08);
   text-align: center;
 }
-.tg-game-stub__badge{
+
+.tg-game-stub__badge {
   width: 42px;
   height: 42px;
   border-radius: 14px;
@@ -626,5 +558,16 @@
   font-weight: 950;
   box-shadow: 0 14px 30px rgba(0,0,0,0.18);
 }
-.tg-game-stub__title{ font-size: 20px; font-weight: 950; letter-spacing: -0.2px; }
-.tg-game-stub__sub{ margin-top: 6px; font-size: 12px; color: rgba(0,0,0,0.55); font-weight: 800; }
+
+.tg-game-stub__title {
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: -0.2px;
+}
+
+.tg-game-stub__sub {
+  margin-top: 6px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.55);
+  font-weight: 800;
+}
