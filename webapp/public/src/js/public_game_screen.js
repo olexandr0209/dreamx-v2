@@ -115,7 +115,7 @@
     if (!elMembers) return;
     elMembers.innerHTML = (list || []).map((m, i) => `
       <div class="pg-member">
-        <div class="pg-member__name">${i + 1}. ${m.tag}</div>
+        <div class="pg-member__name">${m.tag}</div>
         <div class="pg-member__pts">${m.points}</div>
       </div>
     `).join("");
