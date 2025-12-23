@@ -41,7 +41,7 @@
         </section>
 
         <!-- BIG RING (тільки countdown) -->
-        <section class="pt-timer" id="pt-timer">
+        <section class="pt-timer" id="pt-timer" hidden>
           <div class="tg-ring pt-ring" id="pt-ring" style="--p:0;">
             <div class="tg-ring__inner">
               <div class="tg-ring__label">Старт через</div>
@@ -61,9 +61,10 @@
         <!-- ✅ NEW: ACTIONS (JOIN) -->
         <!-- Нічого не ламає: це новий блок + новий id pt-join -->
         <section class="tg-actions" id="pt-actions">
-          <button id="pt-join" class="tg-btn tg-btn--primary" style="display:none;">
+          <button id="pt-join" type="button" class="tg-btn tg-btn--primary" style="display:none;">
             ✅ Join
           </button>
+
           <div class="tg-footnote" id="pt-join-note" style="display:none;">
             Натисни Join, щоб увійти в турнір.
           </div>
