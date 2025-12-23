@@ -8,6 +8,9 @@
   const DEBUG_HEADER_NAME = "X-Debug-Tg-User-Id";
   const DEBUG_STORAGE_KEY = "DX_DEBUG_TG_USER_ID";
 
+  // ✅ NEW: PROD header
+  const TG_INIT_HEADER_NAME = "X-Tg-Init-Data";
+
   function _qs(name) {
     try {
       return new URLSearchParams(window.location.search).get(name);
@@ -31,17 +34,17 @@
     return "";
   }
 
-  // ✅ NEW (MIN): prod tg_user_id з DreamX або Telegram WebApp
-  function getProdTgUserId() {
+  // ✅ NEW (MIN): беремо Telegram initData (підписаний рядок) для PROD
+  function getProdInitData() {
     try {
-      if (window.DreamX && typeof window.DreamX.getTgUserId === "function") {
-        const v = String(window.DreamX.getTgUserId() || "").trim();
+      if (window.DreamX && typeof window.DreamX.getInitData === "function") {
+        const v = String(window.DreamX.getInitData() || "").trim();
         if (v) return v;
       }
     } catch (_) {}
 
     try {
-      const v = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      const v = window.Telegram?.WebApp?.initData;
       if (v) return String(v).trim();
     } catch (_) {}
 
@@ -51,9 +54,12 @@
   function buildHeaders(extra) {
     const h = Object.assign({ "Content-Type": "application/json" }, extra || {});
 
-    // ✅ PROD: якщо є tg id з Telegram — не додаємо debug header
-    const prodTg = getProdTgUserId();
-    if (prodTg) return h;
+    // ✅ PROD: якщо є initData — відправляємо його і НЕ додаємо debug header
+    const initData = getProdInitData();
+    if (initData) {
+      h[TG_INIT_HEADER_NAME] = initData;
+      return h;
+    }
 
     // ✅ DEV: як було — через ?tg=1001 та debug header
     const tg = getDebugTgUserId();
