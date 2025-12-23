@@ -1,4 +1,4 @@
-<!-- public_tournament.html -->
+<!-- webapp/public/public_tournament.html -->
 <!doctype html>
 <html lang="uk">
 <head>
@@ -51,9 +51,22 @@
           <div class="tg-footnote pt-timer-note" id="pt-timer-note">Онлайн реєстрація (заглушка)</div>
         </section>
 
-        <!-- STATUS (forming / group_ready) -->
+        <!-- STATUS (forming / group_ready / errors) -->
         <section class="pt-status" id="pt-status" hidden>
           <div class="pt-status__text" id="pt-status-text">—</div>
+        </section>
+
+        <div class="tg-gap"></div>
+
+        <!-- ✅ NEW: ACTIONS (JOIN) -->
+        <!-- Нічого не ламає: це новий блок + новий id pt-join -->
+        <section class="tg-actions" id="pt-actions">
+          <button id="pt-join" class="tg-btn tg-btn--primary" style="display:none;">
+            ✅ Join
+          </button>
+          <div class="tg-footnote" id="pt-join-note" style="display:none;">
+            Натисни Join, щоб увійти в турнір.
+          </div>
         </section>
 
         <div class="tg-gap"></div>
@@ -81,13 +94,12 @@
   </div>
 
   <script src="/src/js/dreamx_core.js?v=1"></script>
-  
+
   <script>
     window.API_BASE = "https://dreamx-v2.onrender.com";
   </script>
-  
-  <script src="/src/js/public_api_client.js?v=1"></script>
 
-  <script src="/src/js/public_tournament_screen.js?v=1"></script>
+  <script src="/src/js/public_api_client.js?v=1"></script>
+  <script src="/src/js/public_tournament_screen.js?v=2"></script>
 </body>
 </html>
