@@ -309,7 +309,31 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
         stage_players = db.list_stage_players(stage_id)
         joined = (tg_user_id in stage_players)
     except Exception:
+        stage_players = []
         joined = False
+
+    # ✅ STEP2 (мінімально): підтягнути users для lobby/registration (коли ще нема group)
+    stage_players_ui = []
+    try:
+        fn_pub = getattr(db, "get_users_public", None)
+        if callable(fn_pub) and stage_players:
+            users_map_stage = fn_pub(stage_players) or {}
+        else:
+            users_map_stage = {}
+        # зберігаємо порядок як в stage_players
+        for tg in (stage_players or []):
+            u = users_map_stage.get(int(tg), {}) or {}
+            stage_players_ui.append(
+                {
+                    "tg_user_id": int(tg),
+                    "username": u.get("username"),
+                    "first_name": u.get("first_name"),
+                    "last_name": u.get("last_name"),
+                    "photo_url": u.get("photo_url"),
+                }
+            )
+    except Exception:
+        stage_players_ui = []
 
     # чи взагалі показувати кнопку JOIN
     # (узгоджуємо з join_tournament: там зараз треба t.status == 'open')
@@ -350,6 +374,8 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
             "players_count": players_count,
             "joined": joined,
             "join_allowed": join_allowed,
+            # ✅ STEP2 (мінімально): список учасників у lobby (не ламає старий фронт)
+            "players": stage_players_ui,
         }
 
     # ---- група вже є ----
