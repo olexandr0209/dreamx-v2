@@ -2,12 +2,9 @@
 (function () {
   "use strict";
 
-  // Якщо бекенд і фронт на одному домені — лишай ""
-  // Якщо бекенд окремо — у HTML перед підключенням цього файлу задай:
-  // <script>window.API_BASE="https://your-backend.onrender.com";</script>
   const API_BASE = window.API_BASE || "";
 
-  // DEV header (крок 3)
+  // DEV header (залишаємо як було)
   const DEBUG_HEADER_NAME = "X-Debug-Tg-User-Id";
   const DEBUG_STORAGE_KEY = "DX_DEBUG_TG_USER_ID";
 
@@ -20,31 +17,48 @@
   }
 
   function getDebugTgUserId() {
-    // 1) пробуємо взяти з query (?tg=1001)
+    // 1) query (?tg=1001)
     const fromQuery = (_qs("tg") || "").trim();
     if (fromQuery) {
       localStorage.setItem(DEBUG_STORAGE_KEY, fromQuery);
       return fromQuery;
     }
 
-    // 2) беремо зі сховища
+    // 2) storage
     const fromStorage = (localStorage.getItem(DEBUG_STORAGE_KEY) || "").trim();
     if (fromStorage) return fromStorage;
 
-    // 3) нема — значить ти відкрив сторінку без tg
+    return "";
+  }
+
+  // ✅ NEW (MIN): prod tg_user_id з DreamX або Telegram WebApp
+  function getProdTgUserId() {
+    try {
+      if (window.DreamX && typeof window.DreamX.getTgUserId === "function") {
+        const v = String(window.DreamX.getTgUserId() || "").trim();
+        if (v) return v;
+      }
+    } catch (_) {}
+
+    try {
+      const v = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
+      if (v) return String(v).trim();
+    } catch (_) {}
+
     return "";
   }
 
   function buildHeaders(extra) {
-    const h = Object.assign(
-      { "Content-Type": "application/json" },
-      extra || {}
-    );
+    const h = Object.assign({ "Content-Type": "application/json" }, extra || {});
 
+    // ✅ PROD: якщо є tg id з Telegram — не додаємо debug header
+    const prodTg = getProdTgUserId();
+    if (prodTg) return h;
+
+    // ✅ DEV: як було — через ?tg=1001 та debug header
     const tg = getDebugTgUserId();
     if (!tg) {
-      // DEV: без tg заборонено, щоб не отримати “дивні” баги
-      throw new Error("DEV: missing tg user id. Open page with ?tg=1001");
+      throw new Error("missing_tg_user_id");
     }
     h[DEBUG_HEADER_NAME] = tg;
 
@@ -61,7 +75,6 @@
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 
-    // на випадок якщо бекенд віддасть не-json
     const text = await res.text();
     let data = {};
     try {
@@ -71,12 +84,10 @@
     }
 
     if (!res.ok) {
-      // HTTP error
       const err = data.error || `HTTP_${res.status}`;
       throw new Error(err);
     }
 
-    // У нас контракт: ok true/false
     if (data && data.ok === false) {
       throw new Error(data.error || "api_error");
     }
@@ -84,7 +95,6 @@
     return data;
   }
 
-  // ---- Public API ----
   const PublicApi = {
     state(tournamentId) {
       if (!tournamentId) throw new Error("missing_tournament_id");
@@ -112,6 +122,5 @@
     },
   };
 
-  // експортуємо глобально
   window.PublicApi = PublicApi;
 })();
