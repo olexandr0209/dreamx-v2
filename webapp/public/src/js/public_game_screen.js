@@ -40,13 +40,15 @@
     return;
   }
 
-  // Back link: завжди назад у лоббі
-  if (elBack) elBack.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+  if (elBack) {
+    elBack.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+  }
 
   // ---- local runtime ----
   const POLL_MS = 900;
   let pollTimer = null;
   let sending = false;
+  let isRefreshing = false;
   let currentMatch = null;
 
   // timer bar (optional)
@@ -75,7 +77,7 @@
   function setCircle(prefix, idx, text) {
     const el = $(`${prefix}-c${idx}`);
     if (!el) return;
-    if (idx === 0) return; // avatar is separate
+    if (idx === 0) return;
     el.textContent = String(text ?? "—");
   }
 
@@ -114,7 +116,7 @@
       .replaceAll("'", "&#039;");
   }
 
-  // ---- timerbar (optional, best-effort) ----
+  // ---- timerbar ----
   function stopTurnTimer() {
     if (tickTimer) clearInterval(tickTimer);
     tickTimer = null;
@@ -148,7 +150,8 @@
   // ---- normalize backend state (flex) ----
   function normTag(v) {
     if (!v) return "";
-    return String(v).startsWith("@") ? String(v) : `@${v}`;
+    const s = String(v);
+    return s.startsWith("@") ? s : `@${s}`;
   }
 
   function normalizeState(s) {
@@ -161,7 +164,6 @@
     const group = s?.group || s?.my_group || null;
     const match = s?.match || s?.current_match || null;
 
-    // members best-effort
     const members =
       group?.members ||
       group?.players ||
@@ -169,20 +171,19 @@
       s?.group_members ||
       [];
 
-    return {
-      raw: s,
-      phase,
-      tournamentName,
-      organizer,
-      group,
-      members,
-      match,
-      standings: s?.standings || group?.standings || [],
-    };
+    return { raw: s, phase, tournamentName, organizer, group, members, match };
   }
 
   function moveToEmoji(m) {
     return MOVE[m]?.emoji || "—";
+  }
+
+  function goLobby() {
+    window.location.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+  }
+
+  function goResults() {
+    window.location.href = `./public_game_result.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
   }
 
   // ---- render from normalized state ----
@@ -193,13 +194,29 @@
     setText(elTitle, norm.tournamentName);
     setText(elSub, norm.organizer);
 
-    // phase gate
-    if (norm.phase !== "group") {
-      // якщо турнір ще не в груповій фазі — назад у лоббі
+    // ✅ finished → results (ПЕРШИМ, щоб не вилітати в лоббі)
+    const gStatus = norm.group?.status;
+    if (norm.phase === "finished" || gStatus === "finished") {
       setMovesEnabled(false);
       stopTurnTimer();
+      if (elNote) elNote.textContent = "Група завершена. Переходимо до результатів…";
+      goResults();
+      return;
+    }
+
+    // ✅ дозволяємо "forming_groups" без агресивного редіректа
+    if (norm.phase !== "group") {
+      setMovesEnabled(false);
+      stopTurnTimer();
+
+      if (norm.phase === "forming_groups") {
+        if (elNote) elNote.textContent = "Формуються групи… зачекай.";
+        setText(elRoundTitle, "Формуються групи…");
+        return;
+      }
+
       if (elNote) elNote.textContent = `Стан: ${norm.phase}. Повертаємось у лоббі…`;
-      window.location.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+      goLobby();
       return;
     }
 
@@ -209,16 +226,6 @@
     else setText(elGroupTitle, "Ваша група");
 
     renderMembers(norm.members);
-
-    // finished → results
-    const gStatus = norm.group?.status;
-    if (gStatus === "finished" || norm.phase === "finished") {
-      setMovesEnabled(false);
-      stopTurnTimer();
-      if (elNote) elNote.textContent = "Група завершена. Переходимо до результатів…";
-      window.location.href = `./public_game_result.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
-      return;
-    }
 
     // match
     const m = norm.match;
@@ -231,7 +238,6 @@
       setAvatar("pg-op", "AVATAR");
       setAvatar("pg-me", "AVATAR");
 
-      // circles reset
       setCircle("pg-op", 1, "—"); setCircle("pg-op", 2, "—"); setCircle("pg-op", 3, "—");
       setCircle("pg-me", 1, "—"); setCircle("pg-me", 2, "—"); setCircle("pg-me", 3, "—");
       setScore("pg-op", 0);
@@ -278,30 +284,31 @@
     const needMove = !!(m.need_move ?? m.can_move ?? false);
     setMovesEnabled(needMove);
 
-    // timer best-effort: якщо бек віддає seconds_left/seconds_total
     const secLeft = m.turn_seconds_left ?? m.seconds_left ?? null;
     const secTotal = m.turn_seconds_total ?? m.seconds_total ?? null;
     if (secLeft != null && secTotal != null) startTurnTimer(secLeft, secTotal);
     else stopTurnTimer();
 
-    // note
     if (elNote) {
-      if (needMove) elNote.textContent = "Твій хід.";
-      else elNote.textContent = "Очікуємо хід суперника…";
+      elNote.textContent = needMove ? "Твій хід." : "Очікуємо хід суперника…";
     }
   }
 
   async function refresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+
     try {
       const s = await PublicApi.state(tournamentId);
       const norm = normalizeState(s);
       applyFrom(norm);
     } catch (e) {
-      // якщо бек повернув не-json або 404 тощо — покажемо помилку і вимкнемо кнопки
       setMovesEnabled(false);
       stopTurnTimer();
       showError({ ok: false, error: "state_fetch_failed", details: String(e?.message || e) });
       if (elNote) elNote.textContent = "Помилка state. Перевір бекенд / endpoint.";
+    } finally {
+      isRefreshing = false;
     }
   }
 
@@ -313,7 +320,7 @@
     setMovesEnabled(false);
     try {
       await PublicApi.move(tournamentId, currentMatch.id, move);
-      await refresh();
+      refresh(); // polling підтягне, але одразу теж ок
     } catch (e) {
       showError({ ok: false, error: "move_failed", details: String(e?.message || e) });
     } finally {
