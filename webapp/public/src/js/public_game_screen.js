@@ -2,6 +2,13 @@
 (function () {
   const $ = (id) => document.getElementById(id);
 
+  // ---- required ----
+  if (!window.PublicApi) {
+    console.error("[PublicGame] public_api_client.js not loaded");
+    return;
+  }
+
+  // ---- DOM ----
   const elBack = $("pg-back");
   const elTitle = $("pg-title");
   const elSub = $("pg-sub");
@@ -25,152 +32,29 @@
     scissors: { emoji: "✂️", label: "Ножиці" },
   };
 
-  function setText(el, v) { if (el) el.textContent = String(v); }
-
-  function readParams() {
-    const p = new URLSearchParams(window.location.search);
-
-    // базові
-    const publicId = p.get("public_id") || "101";
-    const org = p.get("org") || "@organizator";
-    const groupNo = p.get("group_no") || "2";
-
-    // (опціонально) назва турніру
-    const tName = p.get("t_name") || `Турнір #${publicId}`;
-
-    return { publicId, org, groupNo, tName };
+  // ---- params ----
+  const qs = new URLSearchParams(window.location.search);
+  const tournamentId = Number(qs.get("tournament_id") || qs.get("public_id") || 0);
+  if (!tournamentId) {
+    showError({ ok: false, error: "missing_tournament_id" });
+    return;
   }
 
-  function setCircle(prefix, idx, text) {
-    const el = $(`${prefix}-c${idx}`);
-    if (!el) return;
-    if (idx === 0) return; // avatar handled separately
-    el.textContent = text;
-  }
+  // Back link: завжди назад у лоббі
+  if (elBack) elBack.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
 
-  function setScore(prefix, score) {
-    const el = $(`${prefix}-c4`);
-    if (el) el.textContent = String(score);
-  }
+  // ---- local runtime ----
+  const POLL_MS = 900;
+  let pollTimer = null;
+  let sending = false;
+  let currentMatch = null;
 
-  function setAvatar(prefix, label) {
-    const el = $(`${prefix}-c0`);
-    if (!el) return;
-    el.innerHTML = `<div class="pg-avatar">${label}</div>`;
-  }
+  // timer bar (optional)
+  let tickTimer = null;
+  let turnEndsAtMs = 0;
+  let turnTotalMs = 0;
 
-  function setMovesEnabled(flag) {
-    for (const b of movesBtns) b.disabled = !flag;
-  }
-
-  function decideWinner(myMove, opMove) {
-    if (myMove === opMove) return 0; // draw
-    if (
-      (myMove === "rock" && opMove === "scissors") ||
-      (myMove === "paper" && opMove === "rock") ||
-      (myMove === "scissors" && opMove === "paper")
-    ) return 1; // me
-    return -1; // opponent
-  }
-
-  // ---------------------------
-  // STATE (stub, backend-friendly)
-  // ---------------------------
-  const state = {
-    ok: true,
-
-    tName: "",
-    organizer: "",
-
-    groupNo: "",
-    members: [], // { tag, points }
-
-    roundNo: 1,
-    roundTotal: 3,
-
-    // у кожному раунді 3 гри
-    gameInRound: 1,
-    gamesPerRound: 3,
-
-    opHist: ["—", "—", "—"],
-    meHist: ["—", "—", "—"],
-
-    opScore: 8,
-    meScore: 10,
-
-    meTag: "@you",
-    opTag: "@opponent",
-
-    turnTotalSec: 5,
-    turnEndsAtMs: 0,
-    ticking: false,
-    tickTimer: null,
-
-    // NEW: params cache for redirect/back links
-    publicId: "101",
-    org: "@organizator",
-  };
-
-  function renderMembers(list) {
-    if (!elMembers) return;
-    elMembers.innerHTML = (list || []).map((m) => `
-      <div class="pg-member">
-        <div class="pg-member__name">${m.tag}</div>
-        <div class="pg-member__pts">${m.points}</div>
-      </div>
-    `).join("");
-  }
-
-  function applyState() {
-    setText(elTitle, state.tName);
-    setText(elSub, state.organizer);
-
-    setText(elGroupTitle, `Ваша група № ${state.groupNo}`);
-    renderMembers(state.members);
-
-    setText(elRoundTitle, `Раунд ${state.roundNo}/${state.roundTotal}`);
-
-    setText(elOpTag, state.opTag);
-    setText(elMeTag, state.meTag);
-
-    setCircle("pg-op", 1, state.opHist[0]);
-    setCircle("pg-op", 2, state.opHist[1]);
-    setCircle("pg-op", 3, state.opHist[2]);
-
-    setCircle("pg-me", 1, state.meHist[0]);
-    setCircle("pg-me", 2, state.meHist[1]);
-    setCircle("pg-me", 3, state.meHist[2]);
-
-    setScore("pg-op", state.opScore);
-    setScore("pg-me", state.meScore);
-  }
-
-  function startTurnTimer() {
-    stopTurnTimer();
-
-    state.turnEndsAtMs = Date.now() + state.turnTotalSec * 1000;
-    state.ticking = true;
-
-    state.tickTimer = setInterval(() => {
-      const leftMs = state.turnEndsAtMs - Date.now();
-      const p = Math.max(0, Math.min(1, leftMs / (state.turnTotalSec * 1000)));
-
-      if (elTimerFill) elTimerFill.style.setProperty("--p", String(p));
-
-      if (leftMs <= 0) {
-        stopTurnTimer();
-        setMovesEnabled(false);
-        if (elNote) elNote.textContent = "Час вийшов (заглушка). Пізніше бекенд вирішить автохід/поразку.";
-      }
-    }, 80);
-  }
-
-  function stopTurnTimer() {
-    if (state.tickTimer) clearInterval(state.tickTimer);
-    state.tickTimer = null;
-    state.ticking = false;
-    if (elTimerFill) elTimerFill.style.setProperty("--p", "1");
-  }
+  function setText(el, v) { if (el) el.textContent = String(v ?? ""); }
 
   function showError(obj) {
     if (!elErr) return;
@@ -178,116 +62,280 @@
     elErr.textContent = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2);
   }
 
-  // ✅ NEW: redirect to result screen
-  function goToResults() {
-    const url =
-      `./public_game_result.html` +
-      `?public_id=${encodeURIComponent(state.publicId)}` +
-      `&org=${encodeURIComponent(state.org)}` +
-      `&t_name=${encodeURIComponent(state.tName)}` +
-      `&group_no=${encodeURIComponent(state.groupNo)}`;
-
-    window.location.href = url;
+  function clearError() {
+    if (!elErr) return;
+    elErr.hidden = true;
+    elErr.textContent = "";
   }
 
-  async function onMove(myMove) {
-    try {
-      if (!MOVE[myMove]) return;
+  function setMovesEnabled(flag) {
+    for (const b of movesBtns) b.disabled = !flag || sending;
+  }
+
+  function setCircle(prefix, idx, text) {
+    const el = $(`${prefix}-c${idx}`);
+    if (!el) return;
+    if (idx === 0) return; // avatar is separate
+    el.textContent = String(text ?? "—");
+  }
+
+  function setScore(prefix, score) {
+    const el = $(`${prefix}-c4`);
+    if (el) el.textContent = String(score ?? 0);
+  }
+
+  function setAvatar(prefix, label) {
+    const el = $(`${prefix}-c0`);
+    if (!el) return;
+    el.innerHTML = `<div class="pg-avatar">${label || "AVATAR"}</div>`;
+  }
+
+  function renderMembers(list) {
+    if (!elMembers) return;
+    const arr = Array.isArray(list) ? list : [];
+    elMembers.innerHTML = arr.map((m) => {
+      const tag = m.tag || m.username || (m.tg_user_id ? `#${m.tg_user_id}` : "—");
+      const pts = m.points ?? m.score ?? m.total_points ?? 0;
+      return `
+        <div class="pg-member">
+          <div class="pg-member__name">${escapeHtml(tag)}</div>
+          <div class="pg-member__pts">${escapeHtml(String(pts))}</div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // ---- timerbar (optional, best-effort) ----
+  function stopTurnTimer() {
+    if (tickTimer) clearInterval(tickTimer);
+    tickTimer = null;
+    turnEndsAtMs = 0;
+    turnTotalMs = 0;
+    if (elTimerFill) elTimerFill.style.setProperty("--p", "1");
+  }
+
+  function startTurnTimer(secondsLeft, secondsTotal) {
+    stopTurnTimer();
+
+    const left = Number(secondsLeft);
+    const total = Number(secondsTotal);
+
+    if (!isFinite(left) || !isFinite(total) || total <= 0) {
+      if (elTimerFill) elTimerFill.style.setProperty("--p", "1");
+      return;
+    }
+
+    turnTotalMs = total * 1000;
+    turnEndsAtMs = Date.now() + left * 1000;
+
+    tickTimer = setInterval(() => {
+      const leftMs = turnEndsAtMs - Date.now();
+      const p = Math.max(0, Math.min(1, leftMs / turnTotalMs));
+      if (elTimerFill) elTimerFill.style.setProperty("--p", String(p));
+      if (leftMs <= 0) stopTurnTimer();
+    }, 80);
+  }
+
+  // ---- normalize backend state (flex) ----
+  function normTag(v) {
+    if (!v) return "";
+    return String(v).startsWith("@") ? String(v) : `@${v}`;
+  }
+
+  function normalizeState(s) {
+    const t = s?.tournament || {};
+    const phase = s?.phase || s?.state?.phase || "unknown";
+
+    const tournamentName = t?.name || s?.tournament_name || s?.name || `Турнір #${tournamentId}`;
+    const organizer = t?.organizer || s?.organizer || s?.org || "—";
+
+    const group = s?.group || s?.my_group || null;
+    const match = s?.match || s?.current_match || null;
+
+    // members best-effort
+    const members =
+      group?.members ||
+      group?.players ||
+      s?.members ||
+      s?.group_members ||
+      [];
+
+    return {
+      raw: s,
+      phase,
+      tournamentName,
+      organizer,
+      group,
+      members,
+      match,
+      standings: s?.standings || group?.standings || [],
+    };
+  }
+
+  function moveToEmoji(m) {
+    return MOVE[m]?.emoji || "—";
+  }
+
+  // ---- render from normalized state ----
+  function applyFrom(norm) {
+    clearError();
+
+    // header
+    setText(elTitle, norm.tournamentName);
+    setText(elSub, norm.organizer);
+
+    // phase gate
+    if (norm.phase !== "group") {
+      // якщо турнір ще не в груповій фазі — назад у лоббі
+      setMovesEnabled(false);
+      stopTurnTimer();
+      if (elNote) elNote.textContent = `Стан: ${norm.phase}. Повертаємось у лоббі…`;
+      window.location.href = `./public_tournament.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+      return;
+    }
+
+    // group title
+    const gNo = norm.group?.group_no || norm.group?.no || norm.group?.title || norm.group?.name;
+    if (gNo) setText(elGroupTitle, String(gNo).includes("груп") ? gNo : `Ваша група № ${gNo}`);
+    else setText(elGroupTitle, "Ваша група");
+
+    renderMembers(norm.members);
+
+    // finished → results
+    const gStatus = norm.group?.status;
+    if (gStatus === "finished" || norm.phase === "finished") {
+      setMovesEnabled(false);
+      stopTurnTimer();
+      if (elNote) elNote.textContent = "Група завершена. Переходимо до результатів…";
+      window.location.href = `./public_game_result.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+      return;
+    }
+
+    // match
+    const m = norm.match;
+    currentMatch = m || null;
+
+    if (!m) {
+      setText(elRoundTitle, "Очікуємо матч…");
+      setText(elOpTag, "@opponent");
+      setText(elMeTag, "@you");
+      setAvatar("pg-op", "AVATAR");
+      setAvatar("pg-me", "AVATAR");
+
+      // circles reset
+      setCircle("pg-op", 1, "—"); setCircle("pg-op", 2, "—"); setCircle("pg-op", 3, "—");
+      setCircle("pg-me", 1, "—"); setCircle("pg-me", 2, "—"); setCircle("pg-me", 3, "—");
+      setScore("pg-op", 0);
+      setScore("pg-me", 0);
 
       setMovesEnabled(false);
       stopTurnTimer();
+      if (elNote) elNote.textContent = "У цьому турі ти зараз не в парі. Чекаємо…";
+      return;
+    }
 
-      const myEmoji = MOVE[myMove].emoji;
+    // round title (best-effort)
+    const roundNo = m.round_no ?? m.round ?? norm.group?.round_no ?? null;
+    const roundTotal = m.round_total ?? m.total_rounds ?? norm.group?.round_total ?? null;
+    if (roundNo && roundTotal) setText(elRoundTitle, `Раунд ${roundNo}/${roundTotal}`);
+    else setText(elRoundTitle, "Раунд");
 
-      const opMoves = ["rock", "paper", "scissors"];
-      const opMove = opMoves[Math.floor(Math.random() * opMoves.length)];
-      const opEmoji = MOVE[opMove].emoji;
+    // tags
+    const meTag = normTag(m.me_tag || m.me_username || m.me || m.you || "@you") || "@you";
+    const opTag = normTag(m.op_tag || m.op_username || m.opponent || "@opponent") || "@opponent";
+    setText(elMeTag, meTag);
+    setText(elOpTag, opTag);
 
-      const i = state.gameInRound - 1;
-      state.meHist[i] = myEmoji;
-      state.opHist[i] = opEmoji;
+    setAvatar("pg-op", "AVATAR");
+    setAvatar("pg-me", "AVATAR");
 
-      const w = decideWinner(myMove, opMove);
-      if (w === 1) state.meScore += 1;
-      if (w === -1) state.opScore += 1;
+    // history (best-effort arrays of moves)
+    const myMoves = m.me_moves || m.my_moves || m.moves_me || [];
+    const opMoves = m.op_moves || m.enemy_moves || m.moves_op || [];
 
-      applyState();
+    setCircle("pg-me", 1, moveToEmoji(myMoves[0]));
+    setCircle("pg-me", 2, moveToEmoji(myMoves[1]));
+    setCircle("pg-me", 3, moveToEmoji(myMoves[2]));
 
-      await new Promise(r => setTimeout(r, 700));
+    setCircle("pg-op", 1, moveToEmoji(opMoves[0]));
+    setCircle("pg-op", 2, moveToEmoji(opMoves[1]));
+    setCircle("pg-op", 3, moveToEmoji(opMoves[2]));
 
-      if (state.gameInRound < state.gamesPerRound) {
-        state.gameInRound += 1;
-        if (elNote) elNote.textContent = `Гра ${state.gameInRound}/${state.gamesPerRound} у цьому раунді (заглушка).`;
-        applyState();
-        setMovesEnabled(true);
-        startTurnTimer();
-        return;
-      }
+    // score
+    setScore("pg-me", m.me_score ?? m.my_score ?? m.score_me ?? 0);
+    setScore("pg-op", m.op_score ?? m.enemy_score ?? m.score_op ?? 0);
 
-      if (elNote) elNote.textContent = "Раунд завершено. Очікуємо оновлення (заглушка).";
-      await new Promise(r => setTimeout(r, 800));
+    // need_move + timer
+    const needMove = !!(m.need_move ?? m.can_move ?? false);
+    setMovesEnabled(needMove);
 
-      state.meHist = ["—", "—", "—"];
-      state.opHist = ["—", "—", "—"];
-      state.gameInRound = 1;
+    // timer best-effort: якщо бек віддає seconds_left/seconds_total
+    const secLeft = m.turn_seconds_left ?? m.seconds_left ?? null;
+    const secTotal = m.turn_seconds_total ?? m.seconds_total ?? null;
+    if (secLeft != null && secTotal != null) startTurnTimer(secLeft, secTotal);
+    else stopTurnTimer();
 
-      if (state.roundNo < state.roundTotal) {
-        state.roundNo += 1;
-        applyState();
-        setMovesEnabled(true);
-        startTurnTimer();
-        return;
-      }
+    // note
+    if (elNote) {
+      if (needMove) elNote.textContent = "Твій хід.";
+      else elNote.textContent = "Очікуємо хід суперника…";
+    }
+  }
 
-      // ✅ MATCH FINISHED -> go to results screen
-      applyState();
-      setMovesEnabled(false);
-      if (elNote) elNote.textContent = "Матч завершено. Переходимо до результатів…";
-      await new Promise(r => setTimeout(r, 650));
-      goToResults();
-
+  async function refresh() {
+    try {
+      const s = await PublicApi.state(tournamentId);
+      const norm = normalizeState(s);
+      applyFrom(norm);
     } catch (e) {
-      showError({ ok: false, error: "client_error", details: String(e?.message || e) });
+      // якщо бек повернув не-json або 404 тощо — покажемо помилку і вимкнемо кнопки
+      setMovesEnabled(false);
+      stopTurnTimer();
+      showError({ ok: false, error: "state_fetch_failed", details: String(e?.message || e) });
+      if (elNote) elNote.textContent = "Помилка state. Перевір бекенд / endpoint.";
+    }
+  }
+
+  async function sendMove(move) {
+    if (sending) return;
+    if (!currentMatch || !currentMatch.id) return;
+
+    sending = true;
+    setMovesEnabled(false);
+    try {
+      await PublicApi.move(tournamentId, currentMatch.id, move);
+      await refresh();
+    } catch (e) {
+      showError({ ok: false, error: "move_failed", details: String(e?.message || e) });
+    } finally {
+      sending = false;
     }
   }
 
   function bindUi() {
     for (const b of movesBtns) {
-      b.addEventListener("click", () => onMove(b.dataset.move));
+      b.addEventListener("click", () => {
+        const mv = b.dataset.move;
+        if (!MOVE[mv]) return;
+        sendMove(mv);
+      });
     }
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const params = readParams();
-
-    // cache params for redirect
-    state.publicId = params.publicId;
-    state.org = params.org;
-
-    state.tName = params.tName;
-    state.organizer = params.org;
-
-    if (elBack) {
-      elBack.href = `./public_tournament.html?public_id=${encodeURIComponent(params.publicId)}&org=${encodeURIComponent(params.org)}`;
-    }
-
-    state.groupNo = params.groupNo;
-    state.members = [
-      { tag: "@GamerOne", points: 10 },
-      { tag: "@GamerTwo", points: 7 },
-      { tag: "@GamerThree", points: 12 },
-      { tag: "@GamerFour", points: 9 },
-      { tag: state.meTag, points: 8 },
-    ];
-
-    setAvatar("pg-op", "AVATAR");
-    setAvatar("pg-me", "AVATAR");
-
-    applyState();
+  function start() {
     bindUi();
+    refresh();
+    pollTimer = setInterval(() => refresh(), POLL_MS);
+  }
 
-    setMovesEnabled(true);
-    if (elNote) elNote.textContent = `Гра ${state.gameInRound}/${state.gamesPerRound} у цьому раунді (заглушка).`;
-    startTurnTimer();
-  });
+  document.addEventListener("DOMContentLoaded", start);
 })();
