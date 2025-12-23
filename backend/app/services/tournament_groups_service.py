@@ -356,15 +356,33 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
     group_id = int(g["id"])
     members = db.list_group_members(group_id)
 
+    # ✅ STEP2: підтягнути users (username/first/last/photo) одним запитом
+    users_map = {}
+    try:
+        tg_ids = [int(x["tg_user_id"]) for x in (members or [])]
+        fn = getattr(db, "get_users_public", None)
+        if callable(fn):
+            users_map = fn(tg_ids) or {}
+    except Exception:
+        users_map = {}
+
     group_members = sorted(members, key=lambda x: int(x["seat"]))
-    group_members_ui = [
-        {
-            "tg_user_id": int(x["tg_user_id"]),
-            "seat": int(x["seat"]),
-            "username": x.get("username") if isinstance(x, dict) else None,
-        }
-        for x in group_members
-    ]
+
+    # ✅ STEP2: додаємо user fields у group_members
+    group_members_ui = []
+    for x in group_members:
+        tg = int(x["tg_user_id"])
+        u = users_map.get(tg, {})
+        group_members_ui.append(
+            {
+                "tg_user_id": tg,
+                "seat": int(x["seat"]),
+                "username": u.get("username"),
+                "first_name": u.get("first_name"),
+                "last_name": u.get("last_name"),
+                "photo_url": u.get("photo_url"),
+            }
+        )
 
     standings = sorted(
         members,
@@ -412,6 +430,11 @@ def get_state_for_user(tournament_id: int, tg_user_id: int) -> dict:
                 "wins": int(x["wins"]),
                 "draws": int(x["draws"]),
                 "losses": int(x["losses"]),
+                # ✅ STEP2: додали user fields (не ламає старий фронт)
+                "username": (users_map.get(int(x["tg_user_id"]), {}) or {}).get("username"),
+                "first_name": (users_map.get(int(x["tg_user_id"]), {}) or {}).get("first_name"),
+                "last_name": (users_map.get(int(x["tg_user_id"]), {}) or {}).get("last_name"),
+                "photo_url": (users_map.get(int(x["tg_user_id"]), {}) or {}).get("photo_url"),
             }
             for x in standings
         ],
