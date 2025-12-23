@@ -101,3 +101,46 @@ window.Api = {
     return apiPost(`/games/bot/play?tg_user_id=${encodeURIComponent(tgId)}`, { move });
   },
 };
+
+// ✅ NEW (SAFE): Telegram initData (для майбутніх secure endpoint-ів)
+function getTgInitData() {
+  try {
+    if (window.DreamX && typeof window.DreamX.getInitData === "function") {
+      const v = String(window.DreamX.getInitData() || "").trim();
+      if (v) return v;
+    }
+  } catch (e) {}
+
+  try {
+    const v = window.Telegram?.WebApp?.initData;
+    if (v) return String(v).trim();
+  } catch (e) {}
+
+  return "";
+}
+
+// ✅ NEW (SAFE): готові auth headers (НЕ використовується старим кодом)
+function _authHeaders() {
+  const h = {};
+  const initData = getTgInitData();
+  if (initData) h["X-Tg-Init-Data"] = initData;
+  return h;
+}
+
+// (опційно на майбутнє) apiGet/apiPost з auth headers
+async function apiGetAuth(path) {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method: "GET",
+    headers: { ..._authHeaders() },
+  });
+  return await r.json();
+}
+
+async function apiPostAuth(path, body) {
+  const r = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ..._authHeaders() },
+    body: JSON.stringify(body || {}),
+  });
+  return await r.json();
+}
