@@ -1,12 +1,17 @@
 // webapp/public/src/js/public_tournament_screen.js
 (function () {
+  if (!window.PublicApi) {
+    console.error("[PublicTournament] PublicApi not loaded (public_api_client.js?)");
+    return;
+  }
+
   const $ = (id) => document.getElementById(id);
 
   const elTitle = $("pt-title");
   const elOrg = $("pt-org");
 
-  const elTimer = $("pt-timer");      // wrapper for big ring
-  const elRing = $("pt-ring");        // ring itself
+  const elTimer = $("pt-timer");
+  const elRing = $("pt-ring");
   const elTime = $("pt-time");
   const elTimerNote = $("pt-timer-note");
 
@@ -18,37 +23,17 @@
   const elPlayers = $("pt-players");
   const elNote = $("pt-note");
 
-  let tickTimer = null;
-  let playersTimer = null;
-  let formingWaitTimer = null;
-  let redirectTimer = null;
+  const POLL_MS = 1200;
 
-  /**
-   * ✅ Backend-friendly state model
-   * phase: "countdown" | "forming" | "group_ready"
-   */
-  const state = {
-    ok: true,
-    public_id: null,
-    phase: "countdown",
-
-    tournament_name: "Public tournament",
-    organizer: "@telegram_account",
-
-    seconds_total: 30,
-    seconds_left: 30,
-
-    players_live: [],
-    players_all: [],
-
-    group: null, // { title, members }
-  };
+  let tournamentId = 0;
+  let pollTimer = null;
+  let autoJoinDone = false;
 
   function readParams() {
     const p = new URLSearchParams(window.location.search);
-    state.public_id = p.get("public_id") || "101";
-    const org = p.get("org");
-    if (org) state.organizer = String(org);
+    // підтримуємо і tournament_id, і public_id (щоб не ламати старі лінки)
+    tournamentId = Number(p.get("tournament_id") || p.get("public_id") || 0);
+    if (!tournamentId) tournamentId = 101; // fallback (як у тебе було)
   }
 
   function fmtTime(sec) {
@@ -59,28 +44,39 @@
   }
 
   function setRingProgress(total, left) {
-    const T = Number(total || 30);
-    const L = Number(left || 0);
-    const p = T > 0 ? Math.max(0, Math.min(1, 1 - (L / T))) : 0;
+    const T = Math.max(1, Number(total || 30));
+    const L = Math.max(0, Number(left || 0));
+    const p = Math.max(0, Math.min(1, 1 - L / T));
     if (elRing) elRing.style.setProperty("--p", String(p));
   }
 
   function renderPlayers(list) {
     const arr = Array.isArray(list) ? list : [];
-    if (elCount) elCount.textContent = String(arr.length);
 
+    if (elCount) elCount.textContent = String(arr.length);
     if (!elPlayers) return;
 
-    elPlayers.innerHTML = arr.map((p) => `
-      <div class="tg-player">
-        <div class="tg-player__name">${p.name}</div>
-        <div class="tg-player__tag">${p.tag}</div>
-      </div>
-    `).join("");
+    elPlayers.innerHTML = arr
+      .map((p) => {
+        // підтримка 2 форматів: {name, tag} (старий) і {username, tg_user_id} (бекенд)
+        const name =
+          p.name ||
+          (p.username ? (p.username.startsWith("@") ? p.username.slice(1) : p.username) : "User");
+        const tag =
+          p.tag ||
+          (p.username ? (p.username.startsWith("@") ? p.username : `@${p.username}`) : `#${p.tg_user_id ?? "?"}`);
+
+        return `
+          <div class="tg-player">
+            <div class="tg-player__name">${name}</div>
+            <div class="tg-player__tag">${tag}</div>
+          </div>
+        `;
+      })
+      .join("");
   }
 
   function hideTimerBlock() {
-    // ✅ гарантія що велике кільце реально зникло
     if (elTimer) elTimer.hidden = true;
     if (elRing) elRing.hidden = true;
   }
@@ -90,169 +86,106 @@
     if (elRing) elRing.hidden = false;
   }
 
-  function applyState() {
-    // header
-    if (elTitle) elTitle.textContent = state.tournament_name || "—";
-    if (elOrg) elOrg.textContent = state.organizer || "@telegram_account";
+  function setStatus(text) {
+    if (elStatus) elStatus.hidden = false;
+    if (elStatusText) elStatusText.textContent = text || "—";
+  }
 
-    // defaults
-    hideTimerBlock();
+  function clearStatus() {
     if (elStatus) elStatus.hidden = true;
+  }
 
-    if (state.phase === "countdown") {
+  function mapPhase(phase) {
+    // бекенд: countdown/registration/late_join/forming_groups/group/finished
+    if (phase === "forming_groups") return "forming";
+    if (phase === "group") return "group";
+    if (phase === "finished") return "finished";
+    // countdown/registration/late_join → показуємо таймер-блок
+    return "countdown";
+  }
+
+  async function refresh() {
+    const s = await PublicApi.state(tournamentId);
+
+    const t = s.tournament || {};
+    if (elTitle) elTitle.textContent = t.name || `Public Tournament #${t.tournament_id || tournamentId}`;
+    if (elOrg) elOrg.textContent = t.organizer || "@telegram_account";
+
+    const phase = mapPhase(s.phase);
+
+    // default
+    hideTimerBlock();
+    clearStatus();
+
+    const lobby = s.lobby || {};
+    const players = lobby.players || [];
+
+    // --- countdown/registration/late_join ---
+    if (phase === "countdown") {
       showTimerBlock();
 
-      if (elTime) elTime.textContent = fmtTime(state.seconds_left);
-      setRingProgress(state.seconds_total, state.seconds_left);
+      const secToStart = s.timers?.seconds_to_start;
+      if (elTime && secToStart != null) elTime.textContent = fmtTime(secToStart);
 
-      if (elTimerNote) elTimerNote.textContent = "Онлайн реєстрація (заглушка)";
-      if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
-      if (elNote) elNote.textContent = "Список оновлюється (заглушка).";
+      const total = Math.max(30, Number(secToStart || 30));
+      setRingProgress(total, secToStart);
 
-      renderPlayers(state.players_live);
-      return;
-    }
-
-    if (state.phase === "forming") {
-      // ✅ без кільця + список НЕ оновлюється
-      if (elStatus) elStatus.hidden = false;
-      if (elStatusText) elStatusText.textContent = "Реєстрація завершена! Формуються групи";
-
-      if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
-      if (elNote) elNote.textContent = "Список заморожено (очікуємо бекенд).";
-
-      renderPlayers(state.players_all);
-      return;
-    }
-
-    if (state.phase === "group_ready") {
-      const groupTitle = state.group?.title || "Твоя група A1";
-      const members = state.group?.members || [];
-
-      if (elStatus) elStatus.hidden = false;
-      if (elStatusText) elStatusText.textContent = groupTitle;
-
-      if (elPlayersTitle) elPlayersTitle.textContent = "Гравці твоєї групи";
-      if (elNote) elNote.textContent = "Група сформована (заглушка).";
-
-      renderPlayers(members);
-      return;
-    }
-  }
-
-  function stopAllTimers() {
-    if (tickTimer) clearInterval(tickTimer);
-    tickTimer = null;
-
-    if (playersTimer) clearInterval(playersTimer);
-    playersTimer = null;
-
-    if (formingWaitTimer) clearTimeout(formingWaitTimer);
-    formingWaitTimer = null;
-
-    if (redirectTimer) clearTimeout(redirectTimer);
-    redirectTimer = null;
-  }
-
-  // ---- STUB: players join during countdown ----
-  function startCountdownStub() {
-    const startedAt = Date.now();
-
-    const pool = [
-      { name: "Andrii", tag: "@andrii" },
-      { name: "Ira", tag: "@ira" },
-      { name: "Dmytro", tag: "@dmytro" },
-      { name: "Vlad", tag: "@vlad" },
-      { name: "Katya", tag: "@katya" },
-      { name: "Nazar", tag: "@nazar" },
-      { name: "Maks", tag: "@maks" },
-    ];
-    const me = { name: "Ти", tag: "@you" };
-
-    state.players_live = [me];
-    applyState();
-
-    // list updates only in countdown
-    playersTimer = setInterval(() => {
-      if (state.phase !== "countdown") return;
-
-      const live = [...state.players_live];
-
-      if (live.length < 7) {
-        const next = pool[Math.floor(Math.random() * pool.length)];
-        if (!live.find(x => x.tag === next.tag)) live.push(next);
+      if (elTimerNote) {
+        elTimerNote.textContent =
+          s.phase === "registration" ? "Реєстрація відкрита" :
+          s.phase === "late_join" ? "Можна приєднатись (late join)" :
+          "Очікування старту";
       }
 
-      state.players_live = live;
-      applyState();
-    }, 1000);
+      if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
+      if (elNote) elNote.textContent = "Список оновлюється (бекенд).";
 
-    tickTimer = setInterval(() => {
-      if (state.phase !== "countdown") return;
+      renderPlayers(players);
 
-      const elapsed = (Date.now() - startedAt) / 1000;
-      const left = Math.max(0, 30 - elapsed);
-      state.seconds_left = Math.ceil(left);
-
-      applyState();
-
-      if (left <= 0) {
-        state.seconds_left = 0;
-
-        // freeze ALL players once
-        state.players_all = state.players_live.slice();
-
-        // stop countdown timers
-        if (playersTimer) { clearInterval(playersTimer); playersTimer = null; }
-        if (tickTimer) { clearInterval(tickTimer); tickTimer = null; }
-
-        state.phase = "forming";
-        applyState();
-
-        // ✅ STUB waiting for backend group creation (5 sec for now)
-        waitGroupsFromBackendStub();
+      // ✅ авто-join 1 раз (бо кнопки join у верстці нема)
+      const joinAllowed = !!lobby.join_allowed;
+      const joined = !!lobby.joined;
+      if (!autoJoinDone && joinAllowed && !joined) {
+        autoJoinDone = true;
+        try {
+          await PublicApi.join(tournamentId);
+        } catch (e) {
+          console.error("[PublicTournament] auto-join failed:", e);
+          autoJoinDone = false; // щоб ще раз спробувало на наступному poll
+        }
       }
-    }, 200);
-  }
 
-  // ---- STUB: backend would respond with group data ----
-  function waitGroupsFromBackendStub() {
-    formingWaitTimer = setTimeout(() => {
-      const all = state.players_all.slice();
-      const me = all.find(x => x.tag === "@you") || { name: "Ти", tag: "@you" };
+      return;
+    }
 
-      const others = all.filter(x => x.tag !== "@you");
-      const groupMembers = [me, ...others.slice(0, 2)]; // group size 3 for stub
+    // --- forming ---
+    if (phase === "forming") {
+      setStatus("Реєстрація завершена! Формуються групи");
 
-      state.group = {
-        title: "Твоя група A1",
-        members: groupMembers,
-      };
+      if (elPlayersTitle) elPlayersTitle.textContent = "Учасники";
+      if (elNote) elNote.textContent = "Список з бекенду (формування).";
 
-      state.phase = "group_ready";
-      applyState();
+      renderPlayers(players);
+      return;
+    }
 
-      // after 3 sec -> game stub screen
-      redirectTimer = setTimeout(() => {
-        window.location.href = `./public_game.html?public_id=${encodeURIComponent(state.public_id)}&group=A1&op=@opponent`;
-      }, 3000);
+    // --- group ---
+    if (phase === "group") {
+      // як тільки бекенд каже group — одразу в гру
+      window.location.href = `./public_game.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+      return;
+    }
 
-    }, 5000);
+    // --- finished ---
+    if (phase === "finished") {
+      window.location.href = `./public_game_result.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
+      return;
+    }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    stopAllTimers();
     readParams();
-
-    state.tournament_name = `Public Tournament #${state.public_id}`;
-    state.phase = "countdown";
-    state.seconds_total = 30;
-    state.seconds_left = 30;
-    state.players_live = [];
-    state.players_all = [];
-    state.group = null;
-
-    applyState();
-    startCountdownStub();
+    refresh().catch(console.error);
+    pollTimer = setInterval(() => refresh().catch(console.error), POLL_MS);
   });
 })();
