@@ -568,3 +568,38 @@ def get_advanced_players(stage_id: int) -> list[int]:
             )
             rows = cur.fetchall() or []
             return [int(r["tg_user_id"]) for r in rows]
+
+
+def get_users_public(tg_user_ids: list[int]) -> dict[int, dict]:
+    """
+    Повертає мапу tg_user_id -> public user fields (для UI).
+    Безпечно: тільки SELECT, нічого не ламає.
+    """
+    ids = [int(x) for x in (tg_user_ids or []) if x is not None]
+    if not ids:
+        return {}
+
+    with get_conn() as conn:
+        with _cursor(conn) as cur:
+            cur.execute(
+                """
+                SELECT tg_user_id, username, first_name, last_name, photo_url
+                FROM users
+                WHERE tg_user_id = ANY(%s)
+                """,
+                (ids,),
+            )
+            rows = cur.fetchall() or []
+
+    out: dict[int, dict] = {}
+    for r in rows:
+        tg = int(r["tg_user_id"])
+        out[tg] = {
+            "tg_user_id": tg,
+            "username": r.get("username"),
+            "first_name": r.get("first_name"),
+            "last_name": r.get("last_name"),
+            "photo_url": r.get("photo_url"),
+        }
+    return out
+
