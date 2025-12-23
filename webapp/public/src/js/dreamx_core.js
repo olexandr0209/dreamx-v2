@@ -33,3 +33,29 @@ window.DreamX.getTgUserId = function () {
 
   return null;
 };
+
+window.DreamX.getInitData = function () {
+  try {
+    const tg = window.Telegram?.WebApp;
+    const init = tg?.initData;
+    if (init) return init;
+  } catch (e) {}
+  return "";
+};
+
+window.DreamX.getAuthHeaders = function () {
+  const headers = {};
+
+  // 1) PROD шлях (Telegram signed initData)
+  const initData = window.DreamX.getInitData();
+  if (initData) headers["X-Tg-Init-Data"] = initData;
+
+  // 2) DEV шлях (твої фейкові/кешовані id)
+  const id = window.DreamX.getTgUserId();
+  if (id) headers["X-Debug-Tg-User-Id"] = String(id);
+
+  // (опційно) якщо десь ще використовується tg_user.py
+  if (id) headers["X-Tg-User-Id"] = String(id);
+
+  return headers;
+};
