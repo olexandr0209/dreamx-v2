@@ -13,6 +13,7 @@ from .api.games import bp_games
 from .api.pvp import bp_pvp
 
 from .api.tournament_groups import bp_tg
+from .api.public_tournaments import bp_public
 
 
 def create_app():
@@ -31,6 +32,7 @@ def create_app():
     app.register_blueprint(bp_pvp)
 
     app.register_blueprint(bp_tg)
+    app.register_blueprint(bp_public)
 
     @app.errorhandler(Exception)
     def handle_error(e):
