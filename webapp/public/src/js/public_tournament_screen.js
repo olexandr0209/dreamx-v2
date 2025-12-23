@@ -23,6 +23,9 @@
   const elPlayers = $("pt-players");
   const elNote = $("pt-note");
 
+  // ✅ optional (якщо додаси кнопку в HTML)
+  const btnJoin = $("pt-join");
+
   const POLL_MS = 1200;
 
   const qs = new URLSearchParams(location.search);
@@ -36,6 +39,11 @@
 
   let pollTimer = null;
   let initTried = false; // ✅ 1 раз спробувати join якщо no_stage
+  let joining = false;
+  let isRefreshing = false;
+
+  // ✅ для правильного progress кільця
+  let ringTotalSec = null;
 
   function fmtTime(sec) {
     const s = Math.max(0, Number(sec) | 0);
@@ -103,7 +111,30 @@
     location.href = `./public_game.html?tournament_id=${encodeURIComponent(String(tournamentId))}`;
   }
 
+  async function doJoinOnce() {
+    if (joining) return;
+    joining = true;
+    try {
+      if (btnJoin) btnJoin.disabled = true;
+      await PublicApi.join(tournamentId);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      joining = false;
+      if (btnJoin) btnJoin.disabled = false;
+    }
+  }
+
+  function setJoinVisible(allowed) {
+    if (!btnJoin) return;
+    btnJoin.style.display = allowed ? "block" : "none";
+    btnJoin.disabled = !allowed || joining;
+  }
+
   async function refresh() {
+    if (isRefreshing) return;
+    isRefreshing = true;
+
     try {
       const s = await PublicApi.state(tournamentId);
 
@@ -121,16 +152,24 @@
       if (elNote) elNote.textContent = "Список оновлюється.";
       renderPlayers(players);
 
+      // ✅ join visibility
+      const joinAllowed = !!(s.join_allowed ?? lobby.join_allowed);
+      setJoinVisible(joinAllowed);
+
       // phase routing / UI
       if (phase === "countdown" || phase === "registration" || phase === "late_join") {
         hideStatus();
         showTimer();
 
-        const secondsLeft = s.timers?.seconds_to_start ?? 0;
-        const secondsTotal = Math.max(secondsLeft, 1);
+        const secondsLeft = Number(s.timers?.seconds_to_start ?? 0);
+
+        // ✅ зафіксуємо total один раз на вході у фазу, щоб прогрес рухався
+        if (ringTotalSec == null || ringTotalSec < secondsLeft) {
+          ringTotalSec = Math.max(1, secondsLeft);
+        }
 
         if (elTime) elTime.textContent = fmtTime(secondsLeft);
-        setRingProgress(secondsTotal, secondsLeft);
+        setRingProgress(ringTotalSec || Math.max(secondsLeft, 1), secondsLeft);
 
         if (elTimerNote) {
           elTimerNote.textContent =
@@ -141,6 +180,9 @@
         return;
       }
 
+      // ✅ коли виходимо з таймер-фаз — скидаємо total, щоб наступного разу було коректно
+      ringTotalSec = null;
+
       if (phase === "forming_groups") {
         hideTimer();
         showStatus("Реєстрація завершена! Формуються групи…");
@@ -149,7 +191,6 @@
       }
 
       if (phase === "group") {
-        // ✅ як тільки бек каже group — йдемо в гру
         goGame();
         return;
       }
@@ -169,11 +210,7 @@
       // ✅ якщо бек каже no_stage — 1 раз робимо join, щоб stage з’явився
       if (!initTried && (msg === "no_stage" || msg === "stage_not_found")) {
         initTried = true;
-        try {
-          await PublicApi.join(tournamentId);
-        } catch (_) {
-          // якщо join не дозволений — просто покажемо помилку нижче
-        }
+        await doJoinOnce();
         return;
       }
 
@@ -181,10 +218,20 @@
       showStatus(`Помилка state: ${msg || "unknown"}`);
       if (elNote) elNote.textContent = "Перевір tournament_id і бекенд.";
       renderPlayers([]);
+      setJoinVisible(false);
+    } finally {
+      isRefreshing = false;
     }
   }
 
   function start() {
+    if (btnJoin) {
+      btnJoin.addEventListener("click", async () => {
+        await doJoinOnce();
+        refresh().catch(console.error);
+      });
+    }
+
     refresh().catch(console.error);
     pollTimer = setInterval(() => refresh().catch(console.error), POLL_MS);
   }
