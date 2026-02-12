@@ -289,6 +289,13 @@
       setAvatar(opImg, opFallback, opP?.photo_url || null);
     }
 
+    function resetOpponentUI() {
+      lastPlayersStamp = null; // дозволяємо перерендер
+      if (opNameEl) opNameEl.textContent = "Суперник";
+      setAvatar(opImg, opFallback, null);
+    }
+
+
     function renderResolved(res) {
       if (!res || !res.match) return;
 
@@ -329,9 +336,12 @@
         if (res?.my_user_id) myUserId = Number(res.my_user_id);
         if (res?.my_role) myRole = String(res.my_role);
 
-        renderPlayers(res);
-
         const m = res?.match || {};
+        const hasOpponent = (m.status === "playing" && !!m.player2_id);
+
+        if (!hasOpponent) resetOpponentUI();
+        else renderPlayers(res);
+
         const rn = getMatchRound(m);
 
         if (rn !== curRoundShown) {
@@ -391,7 +401,9 @@
     });
 
     setMovesEnabled(false);
+    resetOpponentUI();
     PvPScreen.start();
+
   </script>
 
 </body>
