@@ -8,7 +8,7 @@ bp_pvp = Blueprint("pvp", __name__, url_prefix="/pvp")
 
 MOVES = ("rock", "paper", "scissors")
 
-MAX_ROUNDS = 5  # 5 раундів * 3 ходи = 15 ходів
+MAX_ROUNDS = 3  # 5 раундів * 3 ходи = 15 ходів
 
 
 def _get_tg_user_id():
